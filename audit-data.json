@@ -1,0 +1,1055 @@
+{
+  "buyer": {
+    "email": "ops@example-fintech.com",
+    "industry": "fintech",
+    "industry_label": "Fintech",
+    "tier": "premium",
+    "stripe_session_id": "cs_live_f1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0",
+    "stripe_session_id_short": "cs_live_...a7b8c9d0",
+    "purchase_date": "2026-05-17",
+    "crm": "Salesforce",
+    "dashboard_coupon": "B7B8C9D0",
+    "followup_coupon": "FU-B7B8C9D0"
+  },
+  "audit": {
+    "score": 67,
+    "stage": "Scale",
+    "stage_range": "60-79",
+    "stage_profile": "Three or more workflows running on shared infrastructure; warehouse integrated; cost-per-meeting trending down for two consecutive quarters.",
+    "savings": {
+      "rate_pct": 22,
+      "savings_unavailable": false,
+      "annual_dollars_fmt": "260,000",
+      "math_breakdown": "8 SDRs at $80,000 fully-loaded plus 5 AEs at $150,000 fully-loaded is $1,390,000 in annual sales-team operating expense (OpEx). At the Scale-stage net savings rate of 22% applied to the AI-covered portion of the workflow, and after AI software costs of approximately $45,500 per year, the run-rate is about $260,000 in net annual savings. The line-by-line math is on the ROI model slide. This figure subtracts your AI software budget directly, so it reads more conservative than the rate-based savings estimate shown in your audit results and PDF report; both describe the same opportunity, viewed before and after software spend."
+    },
+    "team": {
+      "sdr_count": 8,
+      "ae_count": 5,
+      "sdr_loaded_salary": 80000,
+      "ae_loaded_salary": 150000
+    },
+    "dimensions": [
+      {
+        "name_label": "Personalization",
+        "score": 65,
+        "benchmark": 68,
+        "gap_signed": "−3",
+        "gap_class": "gap-neg",
+        "recommendation": "Below benchmark on the highest-weighted dimension. Tighten the prompt template before next quarter."
+      },
+      {
+        "name_label": "Reply rate",
+        "score": 70,
+        "benchmark": 71,
+        "gap_signed": "−1",
+        "gap_class": "gap-neg",
+        "recommendation": "Audit your control-list methodology. A 1-point deficit usually traces to deliverability infra before it traces to copy."
+      },
+      {
+        "name_label": "Setup time",
+        "score": 62,
+        "benchmark": 65,
+        "gap_signed": "−3",
+        "gap_class": "gap-neg",
+        "recommendation": "Setup time slightly below benchmark. Tighten the new-rep onboarding checklist."
+      },
+      {
+        "name_label": "Integrations",
+        "score": 75,
+        "benchmark": 70,
+        "gap_signed": "+5",
+        "gap_class": "gap-pos",
+        "recommendation": "Your strongest moat. Vendor selection should weight tools that compound on your existing stack rather than tools that swap parts of it."
+      },
+      {
+        "name_label": "Cost per meeting",
+        "score": 60,
+        "benchmark": 66,
+        "gap_signed": "−6",
+        "gap_class": "gap-neg",
+        "recommendation": "Likely upstream: ICP definition or list-source mix. The CPM reduction in the Aggressive ROI scenario assumes you close this gap; without it, plan for the Base case."
+      },
+      {
+        "name_label": "UI heuristics",
+        "score": 72,
+        "benchmark": 67,
+        "gap_signed": "+5",
+        "gap_class": "gap-pos",
+        "recommendation": "Above benchmark. No action needed."
+      },
+      {
+        "name_label": "Data accuracy",
+        "score": 68,
+        "benchmark": 72,
+        "gap_signed": "−4",
+        "gap_class": "gap-neg",
+        "recommendation": "Data hygiene is the foundation. A 4-point deficit compounds across every downstream tool."
+      }
+    ],
+    "stage_definition": "Scale is when the deployment moves from one validated workflow to several. The integration plumbing has to be in place - without a single warehouse that every tool reads from, each new workflow ends up with its own copy of customer records.",
+    "stage_exit_criteria": "Three or more workflows on shared infrastructure; warehouse integration confirmed end-to-end; cost per meeting trending below the pilot baseline for two consecutive quarters.",
+    "stage_anti_patterns": "Treating Scale as 'Pilot plus more seats.' Adding the third tool before the first two share data. Letting reps switch between four UIs per outbound cycle.",
+    "roi": {
+      "team_opex_annual": 1390000,
+      "team_opex_annual_fmt": "1,390,000",
+      "roi_unavailable": false,
+      "scenarios": [
+        {
+          "name": "Conservative",
+          "reply_lift_pct": 5,
+          "cpm_reduction_pct": 10,
+          "annual_savings": 143000,
+          "annual_savings_fmt": "143,000",
+          "npv_12mo": 136000,
+          "npv_12mo_fmt": "136,000",
+          "payback_months": 3.8
+        },
+        {
+          "name": "Base",
+          "reply_lift_pct": 12,
+          "cpm_reduction_pct": 18,
+          "annual_savings": 260000,
+          "annual_savings_fmt": "260,000",
+          "npv_12mo": 248000,
+          "npv_12mo_fmt": "248,000",
+          "payback_months": 2.1
+        },
+        {
+          "name": "Aggressive",
+          "reply_lift_pct": 22,
+          "cpm_reduction_pct": 28,
+          "annual_savings": 445000,
+          "annual_savings_fmt": "445,000",
+          "npv_12mo": 424000,
+          "npv_12mo_fmt": "424,000",
+          "payback_months": 1.2
+        }
+      ],
+      "sensitivity_grid": {
+        "row_label": "Reply-rate lift",
+        "col_label": "Cost-per-meeting reduction",
+        "row_headers": [
+          "+5%",
+          "+12%",
+          "+22%"
+        ],
+        "col_headers": [
+          "−10%",
+          "−18%",
+          "−28%"
+        ],
+        "cells": [
+          [
+            "$110k",
+            "$136k",
+            "$178k"
+          ],
+          [
+            "$193k",
+            "$248k",
+            "$329k"
+          ],
+          [
+            "$305k",
+            "$381k",
+            "$424k"
+          ]
+        ]
+      },
+      "assumptions": [
+        "SDR fully-loaded at $80,000; AE fully-loaded at $150,000.",
+        "Discount rate: 10% annual for 12-month NPV (mid-year convention).",
+        "Reply-rate lift applies to outbound volume only; inbound treated as control.",
+        "Cost-per-meeting reduction nets vendor license against pre-AI all-in unit cost.",
+        "Payback months = AI software budget / monthly net savings."
+      ],
+      "math_walkthrough": [
+        "Pre-AI sales-team OpEx: $1,390,000.",
+        "Base scenario reply-rate lift: 12% on 5,000 sends/month produces ~38 additional meetings/month.",
+        "Base scenario CPM reduction: 18% off pre-AI all-in $420 per meeting = $76 saved per meeting.",
+        "AI software budget (license + named-owner allocation): ~$45,500 per year.",
+        "Net annual savings, after software costs: approximately $260,000.",
+        "12-month NPV at 10% discount (mid-year convention): approximately $248,000.",
+        "Payback: $45,500 / ($260,000 / 12) ≈ 2.1 months."
+      ]
+    },
+    "buyer_stack": {
+      "crm": "Salesforce",
+      "warehouse": "Snowflake",
+      "sequencer": "Outreach",
+      "enrichment": [],
+      "conversation_intel": [],
+      "dialer": [],
+      "intent": []
+    },
+    "stack_aware_exclusions": {},
+    "vendor_outreach_emails": {},
+    "audit_refresh": {
+      "discount_pct": 50,
+      "code": "TBD-AT-CHECKOUT",
+      "expires_iso": "2027-05-17",
+      "scope": "one re-audit"
+    },
+    "audience": {
+      "view": "manager"
+    },
+    "reference_architecture": {
+      "layers": [
+        {
+          "label": "DATA SOURCES",
+          "nodes": [
+            {
+              "role": "Warehouse",
+              "system": "Snowflake",
+              "status": "EXISTING"
+            },
+            {
+              "role": "Product telemetry",
+              "system": "Mixpanel",
+              "status": "RECOMMENDED"
+            },
+            {
+              "role": "Intent signals",
+              "system": "Common Room",
+              "status": "RECOMMENDED"
+            }
+          ]
+        },
+        {
+          "label": "DATA PIPELINE",
+          "nodes": [
+            {
+              "role": "Reverse-ETL",
+              "system": "Census",
+              "status": "RECOMMENDED"
+            }
+          ]
+        },
+        {
+          "label": "SYSTEM OF RECORD",
+          "nodes": [
+            {
+              "role": "CRM",
+              "system": "Salesforce",
+              "status": "EXISTING"
+            }
+          ]
+        },
+        {
+          "label": "ACTIVATION",
+          "nodes": [
+            {
+              "role": "Enrichment",
+              "system": "Clearbit",
+              "status": "RECOMMENDED"
+            },
+            {
+              "role": "Sequencer",
+              "system": "Outreach",
+              "status": "EXISTING"
+            },
+            {
+              "role": "Conversation intel",
+              "system": "Gong",
+              "status": "RECOMMENDED"
+            },
+            {
+              "role": "Dialer",
+              "system": "Aircall",
+              "status": "RECOMMENDED"
+            }
+          ]
+        },
+        {
+          "label": "AI AGENT",
+          "nodes": [
+            {
+              "role": "Bounded agent",
+              "system": "Agentforce / Copilot",
+              "status": "FUTURE"
+            }
+          ]
+        }
+      ],
+      "flows": [
+        {
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            1,
+            0
+          ]
+        },
+        {
+          "from": [
+            0,
+            1
+          ],
+          "to": [
+            1,
+            0
+          ]
+        },
+        {
+          "from": [
+            0,
+            2
+          ],
+          "to": [
+            1,
+            0
+          ]
+        },
+        {
+          "from": [
+            1,
+            0
+          ],
+          "to": [
+            2,
+            0
+          ],
+          "label": "reverse-ETL"
+        },
+        {
+          "from": [
+            2,
+            0
+          ],
+          "to": [
+            3,
+            0
+          ],
+          "label": "two-way"
+        },
+        {
+          "from": [
+            2,
+            0
+          ],
+          "to": [
+            3,
+            1
+          ],
+          "label": "two-way"
+        },
+        {
+          "from": [
+            2,
+            0
+          ],
+          "to": [
+            3,
+            2
+          ],
+          "label": "two-way"
+        },
+        {
+          "from": [
+            2,
+            0
+          ],
+          "to": [
+            3,
+            3
+          ],
+          "label": "two-way"
+        },
+        {
+          "from": [
+            2,
+            0
+          ],
+          "to": [
+            4,
+            0
+          ]
+        },
+        {
+          "from": [
+            0,
+            0
+          ],
+          "to": [
+            4,
+            0
+          ],
+          "dashed": true
+        }
+      ]
+    },
+    "peer_cohort": {
+      "cohort_label": "Fintech Scale-stage buyers, last 90 days",
+      "cohort_size": 47,
+      "cohort_median_score": 63,
+      "buyer_percentile": 58
+    },
+    "future_state": {
+      "horizon_months": 18,
+      "target_stage": "Optimization",
+      "target_score": "85+",
+      "target_savings_rate_pct": 32,
+      "target_savings_dollars_fmt": "520,000",
+      "target_savings_scenario": "Aggressive"
+    },
+    "ninety_day_plans": {
+      "Foundation": {
+        "phase_1": {
+          "title": "Days 1-30 -- Foundation lock",
+          "gate": "Gate to Days 31-60: all four weeks complete. If any week slips, extend Foundation; do not start Pilot on a partial foundation.",
+          "rows": [
+            [
+              "1",
+              "Deduplication pass on active accounts list",
+              "Duplication rate under 3%"
+            ],
+            [
+              "2",
+              "Field normalization on industry, size, geo",
+              "Controlled vocabulary documented"
+            ],
+            [
+              "3",
+              "Source-of-truth diagram approved by owner",
+              "One-page diagram signed off"
+            ],
+            [
+              "4",
+              "Email domain warmed up; control list reserved",
+              "50-contact held-out cohort identified"
+            ]
+          ]
+        },
+        "phase_2": {
+          "title": "Days 31-60 -- Pilot",
+          "gate": "Gate to Days 61-90: workflow shipped at projected volume, not demo volume. If reply rate is more than 10% below vendor-claimed, return to Foundation.",
+          "rows": [
+            [
+              "5",
+              "One workflow live; first production send",
+              "Send completes; reply rate measurable"
+            ],
+            [
+              "6",
+              "A/B against control list; daily scoring",
+              "Control delta visible at 100-contact volume"
+            ],
+            [
+              "7",
+              "Reply rate, CPM, setup-time numbers documented",
+              "Numbers within 10% of vendor-claimed"
+            ],
+            [
+              "8",
+              "Kill criteria reviewed; go/no-go decision",
+              "Written go/no-go in deployment log"
+            ]
+          ]
+        },
+        "phase_3": {
+          "title": "Days 61-90 -- Scale-up",
+          "gate": "End of 90 days: Scale stage if all gates met. If any gate failed, the gate that failed is the work for the next 30 days. Do not skip ahead.",
+          "rows": [
+            [
+              "9",
+              "Workflow expanded to second segment",
+              "Reply rate holds within 15% of Pilot"
+            ],
+            [
+              "10",
+              "Warehouse integration confirmed; reverse-ETL live",
+              "Warehouse fields readable in CRM"
+            ],
+            [
+              "11",
+              "Cost-per-meeting tracked weekly",
+              "Trending toward Scale-stage benchmark"
+            ],
+            [
+              "12",
+              "Quarterly review; consolidation candidates",
+              "One consolidation decision documented"
+            ]
+          ]
+        }
+      },
+      "Pilot": {
+        "phase_1": {
+          "title": "Days 1-30 -- Pilot stabilization",
+          "gate": "Gate to Days 31-60: the live pilot is producing numbers documented against vendor-claimed baselines. Variance < 10%.",
+          "rows": [
+            [
+              "1",
+              "Production-send stability + alerting on the existing pilot",
+              "Zero unplanned outages in week 4"
+            ],
+            [
+              "2",
+              "30-day reply rate, CPM, setup-time numbers documented",
+              "Variance from vendor-claimed under 10%"
+            ],
+            [
+              "3",
+              "Written kill criteria applied retroactively to this pilot",
+              "Pass/fail decision on the record"
+            ],
+            [
+              "4",
+              "Second workflow specified (target, owner, kill criteria)",
+              "One-page workflow spec signed off"
+            ]
+          ]
+        },
+        "phase_2": {
+          "title": "Days 31-60 -- Second workflow live",
+          "gate": "Gate to Days 61-90: a second production workflow has shipped at projected volume and is measurable.",
+          "rows": [
+            [
+              "5",
+              "Second workflow first production send",
+              "Send completes; reply rate measurable"
+            ],
+            [
+              "6",
+              "A/B vs control; daily scoring",
+              "Control delta visible at 100-contact volume"
+            ],
+            [
+              "7",
+              "30-day reply rate, CPM, setup-time documented for workflow #2",
+              "Numbers within 10% of vendor-claimed"
+            ],
+            [
+              "8",
+              "Kill criteria reviewed; go/no-go decision on workflow #2",
+              "Written go/no-go in deployment log"
+            ]
+          ]
+        },
+        "phase_3": {
+          "title": "Days 61-90 -- Scale infrastructure",
+          "gate": "End of 90 days: Scale stage if both workflows survived kill criteria and the warehouse round-trip is live.",
+          "rows": [
+            [
+              "9",
+              "Warehouse-to-CRM reverse-ETL live for both workflows",
+              "Warehouse fields readable in CRM"
+            ],
+            [
+              "10",
+              "Integration ladder rung 3 confirmed",
+              "End-to-end data check passes"
+            ],
+            [
+              "11",
+              "Production runbook documented for both workflows",
+              "Runbook reviewed by deployment owner"
+            ],
+            [
+              "12",
+              "Quarterly review; first consolidation candidate identified",
+              "One consolidation decision documented"
+            ]
+          ]
+        }
+      },
+      "Scale": {
+        "phase_1": {
+          "title": "Days 1-30 -- Scale validation",
+          "gate": "Gate to Days 31-60: every Scale-stage workflow has a documented runbook and at least one has been targeted for bounded-agent piloting.",
+          "rows": [
+            [
+              "1",
+              "Workflow inventory: every Scale-stage workflow named + owner assigned",
+              "Inventory ≥ 3 workflows; owners on the record"
+            ],
+            [
+              "2",
+              "Retirement plan for the workflow that didn't pay off",
+              "Sunset date set; users notified"
+            ],
+            [
+              "3",
+              "Production runbook for each surviving workflow",
+              "Runbook reviewed by deployment owner"
+            ],
+            [
+              "4",
+              "Bounded-agent target identified for the Optimization pilot",
+              "Workflow spec signed off; owner assigned"
+            ]
+          ]
+        },
+        "phase_2": {
+          "title": "Days 31-60 -- First Optimization pilot",
+          "gate": "Gate to Days 61-90: bounded agent has shipped on its target segment, with outcome instrumentation live and 30-day numbers documented against the Scale-stage baseline.",
+          "rows": [
+            [
+              "5",
+              "Bounded agent shipped on its target segment",
+              "Production traffic flowing; outcomes captured"
+            ],
+            [
+              "6",
+              "Outcome instrumentation live; daily scoring vs Scale baseline",
+              "Daily metric delta visible to owner"
+            ],
+            [
+              "7",
+              "30-day reply rate + CPM documented against Scale-stage baseline",
+              "Numbers within 15% of pre-agent baseline"
+            ],
+            [
+              "8",
+              "Kill criteria applied; go/no-go on the bounded agent",
+              "Written go/no-go in deployment log"
+            ]
+          ]
+        },
+        "phase_3": {
+          "title": "Days 61-90 -- Optimization expansion",
+          "gate": "End of 90 days: Optimization stage if the bounded agent survived kill criteria and a second-segment expansion has shipped. If any gate failed, fix the gate before expanding.",
+          "rows": [
+            [
+              "9",
+              "Bounded agent expanded to second segment",
+              "Reply rate holds within 15% of segment 1"
+            ],
+            [
+              "10",
+              "Compensation redesign for AI-augmented reps drafted",
+              "Comp v2 reviewed with HR"
+            ],
+            [
+              "11",
+              "Quarterly review; next workflow to bound an agent around identified",
+              "Next-quarter workflow spec on the record"
+            ],
+            [
+              "12",
+              "Commit to Optimization-stage 32% net savings rate",
+              "Q+1 plan against the 32% target signed off"
+            ]
+          ]
+        }
+      },
+      "Optimization": {
+        "phase_1": {
+          "title": "Days 1-30 -- Workflow expansion",
+          "gate": "Gate to Days 31-60: a third bounded agent is live and instrumented; cross-functional handoffs (CS, RevOps) are defined.",
+          "rows": [
+            [
+              "1",
+              "Third bounded agent live on a new segment",
+              "Production traffic; outcomes captured"
+            ],
+            [
+              "2",
+              "Cross-functional handoff to CS defined (post-sale agent)",
+              "Handoff doc; owner on the record"
+            ],
+            [
+              "3",
+              "Cross-functional handoff to RevOps defined (signal capture)",
+              "Handoff doc; owner on the record"
+            ],
+            [
+              "4",
+              "Quarterly cohort benchmarking enrollment confirmed",
+              "Cohort confirmation email on file"
+            ]
+          ]
+        },
+        "phase_2": {
+          "title": "Days 31-60 -- Cross-functional rollout",
+          "gate": "Gate to Days 61-90: CS-side and RevOps-side agents are live and their numbers are documented.",
+          "rows": [
+            [
+              "5",
+              "CS-side agent live (post-sale workflow)",
+              "Production traffic; CSM owners on the record"
+            ],
+            [
+              "6",
+              "RevOps-side signal capture live (intent + product telemetry)",
+              "Signals flowing into CRM as agent-readable fields"
+            ],
+            [
+              "7",
+              "30-day numbers documented for CS + RevOps agents",
+              "Numbers within 15% of pre-agent baseline"
+            ],
+            [
+              "8",
+              "Comp v2 implemented for the AI-augmented book",
+              "First payroll cycle with comp v2 closed"
+            ]
+          ]
+        },
+        "phase_3": {
+          "title": "Days 61-90 -- Next-stage prep",
+          "gate": "End of 90 days: cross-functional rollout is stable and the next two quarters of workflows are queued in the runbook.",
+          "rows": [
+            [
+              "9",
+              "Cohort-benchmarking results received; gap analysis published",
+              "Two-page gap doc reviewed with deployment owner"
+            ],
+            [
+              "10",
+              "Next-quarter workflow queue defined (3+ candidates)",
+              "Queue prioritized with owner + estimated impact"
+            ],
+            [
+              "11",
+              "Comp v3 designed (full-stack AI-augmented)",
+              "Comp v3 reviewed with HR + RevOps"
+            ],
+            [
+              "12",
+              "Annual retrospective; commit to next-year savings rate target",
+              "Annual plan signed off by exec + CFO"
+            ]
+          ]
+        }
+      }
+    },
+    "sub_segment": "",
+    "sub_segment_is": {},
+    "focus": "",
+    "focus_is": {},
+    "outcomes": [],
+    "outcomes_include": {},
+    "worst_dimension": {
+      "name_label": "Cost per meeting",
+      "score": 60,
+      "benchmark": 66,
+      "gap_signed": "−6",
+      "gap_class": "gap-neg",
+      "recommendation": "Likely upstream: ICP definition or list-source mix. The CPM reduction in the Aggressive ROI scenario assumes you close this gap; without it, plan for the Base case."
+    },
+    "top_actions": [
+      {
+        "num": "01",
+        "text": "Likely upstream: ICP definition or list-source mix. The CPM reduction in the Aggressive ROI scenario assumes you close this gap; without it, plan for the Base case.",
+        "source": "From your Cost per meeting gap"
+      },
+      {
+        "num": "02",
+        "text": "Data hygiene is the foundation. A 4-point deficit compounds across every downstream tool.",
+        "source": "From your Data accuracy gap"
+      },
+      {
+        "num": "03",
+        "text": "Below benchmark on the highest-weighted dimension. Tighten the prompt template before next quarter.",
+        "source": "From your Personalization gap"
+      }
+    ],
+    "second_dimension": {
+      "name_label": "Data accuracy",
+      "score": 68,
+      "benchmark": 72,
+      "gap_signed": "−4",
+      "gap_class": "gap-neg",
+      "recommendation": "Data hygiene is the foundation. A 4-point deficit compounds across every downstream tool."
+    },
+    "near_par_dimension": {
+      "name_label": "Reply rate",
+      "score": 70,
+      "benchmark": 71,
+      "gap_signed": "−1",
+      "gap_class": "gap-neg",
+      "recommendation": "Audit your control-list methodology. A 1-point deficit usually traces to deliverability infra before it traces to copy."
+    },
+    "savings_projection": [
+      {
+        "year": "Y1",
+        "stage_label": "Scale",
+        "conservative_fmt": "168K",
+        "base_fmt": "306K",
+        "aggressive_fmt": "523K"
+      },
+      {
+        "year": "Y2",
+        "stage_label": "Optimization",
+        "conservative_fmt": "245K",
+        "base_fmt": "445K",
+        "aggressive_fmt": "761K"
+      },
+      {
+        "year": "Y3",
+        "stage_label": "Optimization",
+        "conservative_fmt": "245K",
+        "base_fmt": "445K",
+        "aggressive_fmt": "761K"
+      }
+    ]
+  },
+  "industry_content": {
+    "frontier_systems_html": "Leading Fintech teams are integrating AI into existing systems, not bolting it on. The pattern that survives a year of production is data-first, agent-second: instrument internal workflows, measure them, redeploy people into the roles the new stack creates, and only then automate customer-facing work.",
+    "frontier_vendors": [
+      {
+        "name": "Salesforce Agentforce",
+        "role": "Agent platform on Data Cloud -- internal Help deployment handled 3M cases, $100M annualized savings.",
+        "new_feature_flag": true,
+        "new_feature_summary": "Agentforce 2.0: outbound agent + Data Cloud retrieval shipped Q1 2026.",
+        "score_increase": 8
+      },
+      {
+        "name": "Microsoft Copilot for Sales",
+        "role": "CRM-side agent on Microsoft Graph; Accenture deployed to 743k seats, 89% MAU.",
+        "new_feature_flag": false,
+        "new_feature_summary": "",
+        "score_increase": 5
+      },
+      {
+        "name": "HubSpot Breeze AI",
+        "role": "Native agent inside HubSpot; lowest-friction adoption for HubSpot-CRM buyers.",
+        "new_feature_flag": true,
+        "new_feature_summary": "Breeze Intelligence GA Q1 2026: built-in enrichment + buyer-intent.",
+        "score_increase": 6
+      },
+      {
+        "name": "Common Room",
+        "role": "Signal-graph layer feeding CRM; Notion booked 30% more meetings per rep / month.",
+        "new_feature_flag": false,
+        "new_feature_summary": "",
+        "score_increase": 4
+      },
+      {
+        "name": "Gong",
+        "role": "Conversation intelligence; lifts coaching quality without changing the rep workflow.",
+        "new_feature_flag": false,
+        "new_feature_summary": "",
+        "score_increase": 3
+      },
+      {
+        "name": "Anthropic API",
+        "role": "Consumption-priced; distribution through clouds buyers already use.",
+        "new_feature_flag": false,
+        "new_feature_summary": "",
+        "score_increase": 3
+      }
+    ],
+    "data_hygiene_notes": "Fintech buyers usually have multiple sources of truth (CRM, billing, product/usage data). Decide which fields each system owns before any AI tool reads from any of them.",
+    "integration_notes": "By Scale stage, a warehouse connector (Snowflake / BigQuery / Databricks) is non-negotiable. Tools that read only the CRM become an integration tax as workflows multiply.",
+    "workforce_impact": [
+      {
+        "company": "Salesforce",
+        "headline": "Customer-support headcount: ~9,000 to ~5,000.",
+        "detail": "Marc Benioff publicly attributed the reduction to Agentforce, then reframed as a 'rebalance' with redeployment into sales. Reskilling pipeline filled over half of new internal roles from existing employees. AI handles ~50% of customer interactions on help.salesforce.com.",
+        "source": "CNBC (Sept 2025); Fortune (April 2026); CX Today."
+      },
+      {
+        "company": "Klarna",
+        "headline": "~700 customer-service workers replaced; partial reversal in 2025.",
+        "detail": "OpenAI-trained chatbot replaced roles in 2023. By mid-2025, customer-satisfaction scores dropped, internal reviews flagged AI's empathy gap on multi-step issues, and Klarna began rehiring under a flexible-schedule model. CEO publicly stated 'we went too far.'",
+        "source": "CNBC (May 2025); Entrepreneur (2025)."
+      },
+      {
+        "company": "Meta",
+        "headline": "~14,000 roles eliminated, AI-as-justification.",
+        "detail": "Chief people officer framed cuts as offsetting AI capex doubling from ~$72B to ~$135B in 2026. No public reskilling commitment of comparable scale. Public 'AI replaces humans' framing carried measurable reputational tax in recruiting and customer audiences.",
+        "source": "Variety (April 2026); CNN Business; CNBC."
+      }
+    ],
+    "role_displacement_table": [
+      {
+        "role": "Tier-1 customer service / chat agent (BNPL, consumer credit, deposit accounts)",
+        "risk": "High",
+        "risk_label": "High",
+        "risk_class": "high",
+        "retraining": "Move to escalation specialist for regulatorily-load-bearing complaints (ECOA, EU consumer-credit, dispute resolution); secondary track to compliance ops",
+        "retraining_track": "Move to escalation specialist for regulatorily-load-bearing complaints (ECOA, EU consumer-credit, dispute resolution); secondary track to compliance ops",
+        "horizon": "0-12 months"
+      },
+      {
+        "role": "Outbound SDR / BDR for regulated B2B FinTech",
+        "risk": "High",
+        "risk_label": "High",
+        "risk_class": "high",
+        "retraining": "GTM Engineer role (sales-ops + AI workflow tooling) at Stripe/Ramp/Vercel pay band ($184-252K); or move to AE-track with AI-augmented account research",
+        "retraining_track": "GTM Engineer role (sales-ops + AI workflow tooling) at Stripe/Ramp/Vercel pay band ($184-252K); or move to AE-track with AI-augmented account research",
+        "horizon": "12-24 months"
+      },
+      {
+        "role": "Junior fraud analyst / rule writer",
+        "risk": "Medium",
+        "risk_label": "Medium",
+        "risk_class": "medium",
+        "retraining": "Move to model-risk validation, fraud-pattern investigation, or Stripe Radar Assistant-style rule curator (LLM compiles, human curates)",
+        "retraining_track": "Move to model-risk validation, fraud-pattern investigation, or Stripe Radar Assistant-style rule curator (LLM compiles, human curates)",
+        "horizon": "12-18 months"
+      },
+      {
+        "role": "Tax / VAT recovery analyst, KYC reviewer, sanctions-screening analyst",
+        "risk": "Medium",
+        "risk_label": "Medium",
+        "risk_class": "medium",
+        "retraining": "Specialist domain-AI vendor management (Bluedot pattern); ownership of rule-coverage and audit-trail discipline; second-line review of AI-flagged exceptions",
+        "retraining_track": "Specialist domain-AI vendor management (Bluedot pattern); ownership of rule-coverage and audit-trail discipline; second-line review of AI-flagged exceptions",
+        "horizon": "12-24 months"
+      },
+      {
+        "role": "Junior loan / contract reviewer (commercial credit, vendor agreements)",
+        "risk": "Medium",
+        "risk_label": "Medium",
+        "risk_class": "medium",
+        "retraining": "Move to COiN-style exception handling, contract-anomaly investigation, or transition to credit-risk policy roles",
+        "retraining_track": "Move to COiN-style exception handling, contract-anomaly investigation, or transition to credit-risk policy roles",
+        "horizon": "18-24 months"
+      },
+      {
+        "role": "Manual expense / spend categorizer in finance ops",
+        "risk": "High",
+        "risk_label": "High",
+        "risk_class": "high",
+        "retraining": "FP&A analyst track using Brex Empower / Ramp / Mercury surfaces; budget-modeling and vendor-renewal analytics",
+        "retraining_track": "FP&A analyst track using Brex Empower / Ramp / Mercury surfaces; budget-modeling and vendor-renewal analytics",
+        "horizon": "0-18 months"
+      }
+    ]
+  },
+  "recommendations": {
+    "foundation": [
+      {
+        "vendor": "Ramp",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "$32B valuation, $1B+ ARR, 50,000+ customers. Native ERP coverage: NetSuite, Intacct, QBO, Workday Financials, MS Dynamics BC + F&O, Oracle Fusion, Xero, Acumatica. SOC 1 + SOC 2 + ISO 27001:2022 + PCI DSS + FedRAMP Moderate + GovRAMP + TX-RAMP. Free tier + transparent $15/seat published.",
+        "scale_envelope": "Spend-only slice; not an ERP replacement. Third-party reviews flag NetSuite sync friction. No warehouse-native connectors. Underlying LLM not named. ISO 42001 not held.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://ramp.com",
+        "rank": 3,
+        "score": 53
+      },
+      {
+        "vendor": "BlackLine",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "Enterprise close, reconciliation, intercompany governance, AR cash-app. Verity AI ISO 42001:2023 certified Sept 2025. WiseLayer agents Apr 2026. OEM-depth SAP Solution Extension partnership. ~4,400 customers; 60%+ Fortune 500; 70%+ DJIA. FY2026 revenue guide $765-769M.",
+        "scale_envelope": "Rejected $4.5B SAP offer June 2025. Activist 220 Demand Letter. Sale-authority committee. No GL / AP / procure / inventory / manufacturing / HCM / CRM / SCM modules. Sales-led pricing. FedRAMP absent.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://blackline.com",
+        "rank": 4,
+        "score": 50
+      }
+    ],
+    "pilot": [
+      {
+        "vendor": "Vic.ai",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "AP-automation specialist. IDC 2024 Major Player. 4.8/5 G2. Autonomous coding-and-approval. SOC 1 + SOC 2 Type II. Named customers: Associa, HSB, Higher Ground Education, Milwaukee Tool, Virgin Voyages, Heart Aerospace. 10K+ entities / $30B spend processed. Out-of-the-box connectors: NetSuite, SAP, MS Dynamics 365, Oracle Fusion, Workday, Sage Intacct, Coupa.",
+        "scale_envelope": "Only AP - no close, no AR, no spend, no FP&A. No native connector for Infor / IFS / Epicor / Odoo / Unit4 / Forterro. Underlying LLM not named. Layoff history + C-suite exits + 42 months since last funding round.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://vic.ai",
+        "rank": 5,
+        "score": 47
+      },
+      {
+        "vendor": "Numeric",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "AI-native close-management leader for venture-backed software/fintech accounting teams. Named customers: Brex, Plaid, OpenAI, Wealthfront, Mercury. Vendor-claimed outcomes at Brex (6->4 day close, 30%->90%+ cash auto-match). April 2026 MCP server ship. Founders Fund seed 2024.",
+        "scale_envelope": "Single-module specialist. Zero native integration to SAP S/4HANA, Oracle Fusion, MS Dynamics 365 Finance, Workday Financials, Infor, IFS, Epicor, Unit4, Forterro. /security and /trust return 404; SOC 1 Type 2 announced via LinkedIn but ISO 27001 / FedRAMP / HIPAA / GDPR / data-residency unstated.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://numeric.io",
+        "rank": 6,
+        "score": 43
+      }
+    ],
+    "scale": [
+      {
+        "vendor": "Rillet",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "AI-native finance ops platform for the $20M-$500M revenue band. AI agents named on rillet.com handle close (reconciliations, accruals, variance), revenue recognition (ASC 606), multi-entity and multi-currency consolidations, AP, AR, bank reconciliation, and ad-hoc NLQ reporting. Vendor-claimed 400+ finance-team customers including Windsurf, Postscript, Kickstarter, Sotheby's. 5.0 average on G2. Implementation in weeks vs the 6-12 months typical of legacy ERPs.",
+        "scale_envelope": "FP&A / budgeting / forecasting, tax provisioning, expense management, and full treasury / cash management are not on the platform. Buyers who need a unified finance ops plus planning suite will need a separate FP&A tool alongside. Compliance posture also light, SOC 2 Type 2 plus ISO 27001 plus ISO 42001 attestation posture not yet on a visible trust page.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://rillet.com",
+        "rank": 1,
+        "score": 70
+      },
+      {
+        "vendor": "Trullion",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "Top-quartile in this cohort across the published rubric.",
+        "scale_envelope": "No scale ceiling flagged in the cohort scoring.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://trullion.com",
+        "rank": 2,
+        "score": 54
+      }
+    ],
+    "optimization": [
+      {
+        "vendor": "Puzzle",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "AI automates transaction categorization, bank reconciliation, accruals, and month-end close per puzzle.io — bookkeepers review/approve rather than data-enter. Real-time cash, burn, and runway reporting. Vendor-claimed 7,000+ startups and accounting firms. Modern double-entry GAAP-compliant ledger (not a wrapper over QuickBooks). Native integrations named: Stripe, Mercury, Brex, Ramp, Gusto, Rippling, Carta.",
+        "scale_envelope": "Startup-segment-only positioning — not built for mid-market or enterprise tax/accounting. Cohort placement is partial-fit: Puzzle is AI accounting/GL, while the canonical tax cohort vendors (Avalara, Vertex, Stripe Tax, Numeral) are transaction-tax automation. Underlying LLM provider not named on puzzle.io. Compliance/security posture not on a public trust page.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://puzzle.io",
+        "rank": 7,
+        "score": 43
+      },
+      {
+        "vendor": "MindBridge",
+        "price_per_seat_month": "Contact",
+        "fit_rationale": "Enterprise-grade AI audit analytics: 260B+ transactions in training, 8,000+ GAAP rules embedded, 1B-row single-analysis ceiling, SOC 2 Type 2 + ISO 27001 + ICAEW + UCLC algorithm audit. KPMG Clara digital-audit embed is the highest-profile distribution channel.",
+        "scale_envelope": "Not a tax tool. Does not file returns, calculate tax liability, register for nexus, maintain jurisdiction rate tables, or handle VAT/GST/e-filing/CPA prep. Two zero-scored dimensions on the tax-cohort rubric. Pricing not publicly published (/pricing returns 410 Gone); underlying LLM provider undisclosed.",
+        "integration_mismatch": false,
+        "has_affiliate": false,
+        "affiliate_link": "",
+        "vendor_url": "https://mindbridge.ai",
+        "rank": 8,
+        "score": 39
+      }
+    ],
+    "all": [
+      {
+        "vendor": "Ramp",
+        "has_affiliate": false
+      },
+      {
+        "vendor": "BlackLine",
+        "has_affiliate": false
+      },
+      {
+        "vendor": "Vic.ai",
+        "has_affiliate": false
+      },
+      {
+        "vendor": "Numeric",
+        "has_affiliate": false
+      },
+      {
+        "vendor": "Rillet",
+        "has_affiliate": false
+      },
+      {
+        "vendor": "Trullion",
+        "has_affiliate": false
+      },
+      {
+        "vendor": "Puzzle",
+        "has_affiliate": false
+      },
+      {
+        "vendor": "MindBridge",
+        "has_affiliate": false
+      }
+    ]
+  }
+}

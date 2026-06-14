@@ -1,0 +1,10 @@
+# Your API key lives here - never commit it.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

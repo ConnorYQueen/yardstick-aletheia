@@ -1,0 +1,9 @@
+# Aletheia runner dependencies.
+#
+# Anthropic is the default provider and the only required dependency.
+# OpenAI is optional - install it only if you run with --provider openai.
+
+anthropic>=0.49
+
+# Optional - uncomment to run on OpenAI models:
+# openai>=1.40
