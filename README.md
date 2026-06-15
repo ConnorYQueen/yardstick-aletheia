@@ -7,51 +7,61 @@ runs agent-first under human governance: through your stage's exit gates, up
 the autonomy ladder, on your own numbers.
 
 This folder is a small, readable program you run on your own machine, against
-your own model API key. Your audit data never leaves your computer except as a
-request to the model provider you choose.
+your own model API key. Aletheia is model-agnostic - run her on Claude, GPT,
+or another provider. Your audit data never leaves your computer except as a
+request to the model provider you choose. As you work, she keeps persistent
+memory across sessions and builds reusable skills you own.
 
 ## What's here
 
 | File | What it is |
 |---|---|
-| `aletheia.py` | The runner: a command-line chat agent. |
+| `aletheia.py` | The runner: the agent itself. |
 | `_backends/` | One file per model provider (Anthropic, OpenAI). |
+| `CHOOSE-YOUR-MODEL.md` | Which model to run her on, given your stack. |
 | `requirements.txt` | Python dependencies. |
 | `.env.example` | Template for your API key. |
 | `ALETHEIA.md` | The agent's instructions, personalized to your audit. * |
 | `audit-data.json` | Your audit results. * |
+| `memory/`, `skills/` | Created as you go: her notes + the skills she builds you. |
 
-\* The two starred files come from your Yardstick bundle. If you cloned this
-from the public repository, drop your own `ALETHEIA.md` and `audit-data.json`
-in beside `aletheia.py` before running.
+\* The two starred files come from your Yardstick bundle. `unlock` fetches
+`audit-data.json` for you, or drop your own beside `aletheia.py`.
 
 ## Run it
 
-You need Python 3.9+ and a model API key (Anthropic by default).
+You need Python 3.9+ and a model API key.
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env          # then paste your API key into .env
-python aletheia.py --check    # confirms setup without calling the API
-python aletheia.py            # starts the session
+python aletheia.py unlock CODE       # enter the code from your PDF / PowerPoint
+python aletheia.py setup             # pick the best model for your stack, write .env
+# add your API key to .env, then:
+python aletheia.py                   # start (or resume) a session
 ```
 
-Type your questions; Aletheia answers from your audit data. A good first
-prompt: *"Start our first session. Read my state back to me and tell me the
-one gap you would close first."* Type `exit` or press Ctrl-D to quit.
+`python aletheia.py --check` verifies setup without an API call. Type your
+questions; Aletheia answers from your audit data, saves memory, and builds
+skills as you go (you'll see `[saved memory: ...]` / `[created skill: ...]`).
+Type `exit` or press Ctrl-D to quit; next time, `python aletheia.py` resumes
+from your saved memory.
 
-## Run it on a different model
+## Choosing a model
 
-Claude (`claude-opus-4-8`) is the default. To run on OpenAI instead:
+Claude (`claude-opus-4-8`) is the default; `python aletheia.py setup`
+recommends the best fit for your stack and writes it to `.env`. See
+`CHOOSE-YOUR-MODEL.md`. To run on OpenAI: `pip install openai` then
+`python aletheia.py --provider openai`. Override per run with `--model`, or set
+`ALETHEIA_PROVIDER` / `ALETHEIA_MODEL` in `.env`. Adding another provider is
+one small file in `_backends/` exposing the same four functions.
 
-```bash
-pip install openai
-python aletheia.py --provider openai
-```
+## Memory and skills
 
-Override the model per run with `--model`, or set `ALETHEIA_PROVIDER` /
-`ALETHEIA_MODEL` in your `.env`. Adding another provider is one small file in
-`_backends/` exposing the same four functions the existing backends do.
+Aletheia writes plain Markdown: `memory/` holds her notes on where you are and
+what you decided (reloaded every session); `skills/<name>/SKILL.md` holds
+reusable processes she builds so you own the capability internally instead of
+renting it from a vendor. Both are yours - portable, readable, and usable on
+any agent platform.
 
 ## Your data
 
