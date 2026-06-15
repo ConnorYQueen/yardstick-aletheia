@@ -7,3 +7,10 @@ anthropic>=0.49
 
 # Optional - uncomment to run on OpenAI models:
 # openai>=1.40
+
+# Optional - uncomment to let Aletheia build branded deliverables on your
+# machine. All pure-Python, no system libraries, no network - safe for
+# locked-down and regulated environments.
+# python-pptx>=1.0    # stakeholder decks (.pptx)
+# fpdf2>=2.7          # documents, incl. retraining plans (.pdf)
+# openpyxl>=3.1       # financial projections / models (.xlsx)

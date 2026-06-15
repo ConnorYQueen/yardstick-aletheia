@@ -48,20 +48,26 @@ BACKENDS = {
     "openai": "_backends.openai_backend",
 }
 
-# Model-agnostic file directives. Aletheia emits these in her replies; the
-# runner parses them out, writes the files, and shows a one-line confirmation
+# Model-agnostic directives. Aletheia emits these in her replies; the runner
+# parses them out, writes/builds the files, and shows a one-line confirmation
 # instead of the raw block. Works on ANY instruction-following model -- no
 # provider-specific tool-call API required.
-#   @aletheia:memory <relative-path-under-memory/>
-#   ...content...
-#   @aletheia:end
-#   @aletheia:skill <skill-name>
-#   ...SKILL.md content...
-#   @aletheia:end
+#   @aletheia:memory <path>        ... markdown ...          -> memory/<path>.md
+#   @aletheia:skill  <name>        ... SKILL.md ...           -> skills/<name>/SKILL.md
+#   @aletheia:brand                ... JSON ...               -> brand.json
+#   @aletheia:deck   title="..."   ... JSON spec ...          -> artifacts/<slug>.pptx
+#   @aletheia:doc    title="..."   ... JSON spec ...          -> artifacts/<slug>.pdf
+#   @aletheia:sheet  title="..."   ... JSON spec ...          -> artifacts/<slug>.xlsx
+# Each block ends with a line: @aletheia:end
 DIRECTIVE_RE = re.compile(
-    r"@aletheia:(memory|skill)[ \t]+([^\n]+?)[ \t]*\n(.*?)\n@aletheia:end",
+    r"@aletheia:(memory|skill|brand|deck|doc|sheet)[ \t]*([^\n]*?)[ \t]*\n(.*?)\n@aletheia:end",
     re.DOTALL,
 )
+
+
+def _parse_title(arg: str) -> str:
+    m = re.search(r'''title\s*=\s*["']([^"']+)["']''', arg)
+    return (m.group(1) if m else arg).strip().strip('"').strip("'")
 
 FIRST_PROMPT = ("Start our first session. Read my state back to me, tell me the "
                 "one gap you would close first, and save a memory file with where "
@@ -159,29 +165,53 @@ def load_memory_and_skills(pack_dir: Path) -> str:
 
 
 def apply_directives(reply: str, pack_dir: Path) -> str:
-    """Find @aletheia:memory / @aletheia:skill blocks in a reply, write the
-    files, and replace each block with a one-line confirmation for display."""
+    """Find @aletheia:* blocks in a reply, write/build the files, and replace
+    each block with a one-line confirmation for display."""
+    import _artifacts  # local module; cheap (heavy libs load lazily per builder)
+
     def write(match) -> str:
-        kind, target, content = match.group(1), match.group(2), match.group(3)
-        slug = _safe_member(target)
-        if not slug:
-            return "[skipped a malformed file directive]"
+        kind, arg, content = match.group(1), match.group(2), match.group(3)
         try:
             if kind == "memory":
+                slug = _safe_member(arg)
+                if not slug:
+                    return "[skipped a malformed memory directive]"
                 if not slug.endswith(".md"):
                     slug += ".md"
                 dest = pack_dir / "memory" / slug
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_text(content.strip() + "\n", encoding="utf-8")
                 return f"[saved memory: memory/{slug}]"
-            else:  # skill
+            if kind == "skill":
+                slug = _safe_member(arg)
+                if not slug:
+                    return "[skipped a malformed skill directive]"
                 name = slug.split("/")[0]
                 dest = pack_dir / "skills" / name / "SKILL.md"
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_text(content.strip() + "\n", encoding="utf-8")
                 return f"[created skill: skills/{name}/]"
-        except OSError as e:
-            return f"[could not write {kind} {slug}: {e}]"
+            if kind == "brand":
+                try:
+                    data = json.loads(content)
+                except json.JSONDecodeError:
+                    return "[skipped branding: the block was not valid JSON]"
+                (pack_dir / "brand.json").write_text(
+                    json.dumps(data, indent=2), encoding="utf-8")
+                return "[saved branding + compliance settings: brand.json]"
+            if kind in _artifacts.BUILDERS:
+                try:
+                    spec = json.loads(content)
+                except json.JSONDecodeError:
+                    return f"[skipped {kind}: the spec was not valid JSON]"
+                title = _parse_title(arg) or spec.get("title") or kind.capitalize()
+                out = (pack_dir / "artifacts" /
+                       f"{_artifacts._slug(title, kind)}.{_artifacts.EXT[kind]}")
+                brand = _artifacts.load_brand(pack_dir)
+                return _artifacts.BUILDERS[kind](title, spec, brand, pack_dir, out)
+        except Exception as e:
+            return f"[could not build {kind}: {e}]"
+        return "[skipped an unknown directive]"
     return DIRECTIVE_RE.sub(write, reply)
 
 

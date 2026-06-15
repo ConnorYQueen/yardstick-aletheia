@@ -1,0 +1,10 @@
+{
+  "company": "Your Company",
+  "primary": "#1F2A37",
+  "secondary": "#4B5563",
+  "accent": "#C2703D",
+  "font": "Helvetica",
+  "logo": "logo.png",
+  "confidentiality_footer": "Confidential - Internal Use Only",
+  "classification": "INTERNAL"
+}

@@ -63,6 +63,23 @@ reusable processes she builds so you own the capability internally instead of
 renting it from a vendor. Both are yours - portable, readable, and usable on
 any agent platform.
 
+## Deliverables (decks, PDFs, financial models)
+
+Ask Aletheia to build a stakeholder deck, a PDF (for example a retraining plan
+for affected employees), or a financial projection, and she writes the file to
+`artifacts/` in your branding. Install the optional builders first:
+
+```bash
+pip install python-pptx fpdf2 openpyxl
+```
+
+Set your branding once by copying `brand.json.example` to `brand.json` (company
+name, colors, logo file, and a confidentiality footer / classification label),
+or just let Aletheia ask you. Before she builds anything she runs a short
+compliance check - which regime applies, what must be redacted, what markings
+to stamp - and honors it. Everything is generated on your machine with no
+network call, so it is safe for regulated and locked-down environments.
+
 ## Your data
 
 `audit-data.json` holds your audit responses and the numbers derived from them.
