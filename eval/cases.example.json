@@ -1,13 +1,13 @@
 {
   "task": "Extract the company and the buying intent from an inbound sales email",
-  "note": "Deterministic checks fit routine, high-volume steps (extraction, classification, formatting) - the steps where model routing saves the most. Judgment-heavy steps stay on the frontier model and are not what this harness is for. Replace these with cases from your own task; ask Aletheia to write a set for you.",
+  "note": "Deterministic checks fit routine, high-volume steps (extraction, classification, formatting) - the steps where model routing saves the most. Judgment-heavy steps stay on the frontier model and are not what this harness is for. Replace these with cases from your own task; ask Aletheia to write a set for you. The company checks use a case-insensitive regex (?i) because models echo the lowercased email domain (for acme.io they return company=acme). Use regex (?i) or iequals for free-form extracted values, and plain contains for controlled enums like the intent field.",
   "cases": [
     {
       "name": "clear-demo-request",
       "system": "Extract two fields from the email. Reply with only: company=<name>; intent=<one of: demo, pricing, support, other>",
       "prompt": "From: jane@acme.io\nSubject: next steps\nHi, we saw your platform and would like to book a demo next week for our ops team.",
       "checks": [
-        {"type": "contains", "value": "Acme"},
+        {"type": "regex", "value": "(?i)acme"},
         {"type": "contains", "value": "demo"}
       ]
     },
@@ -16,7 +16,7 @@
       "system": "Extract two fields from the email. Reply with only: company=<name>; intent=<one of: demo, pricing, support, other>",
       "prompt": "From: ops@northwind.co\nSubject: cost\nWhat does your enterprise plan run for 200 seats?",
       "checks": [
-        {"type": "contains", "value": "Northwind"},
+        {"type": "regex", "value": "(?i)northwind"},
         {"type": "contains", "value": "pricing"}
       ]
     }
