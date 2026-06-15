@@ -12,8 +12,25 @@ Based on your declared stack (no declared stack in your audit yet (run `unlock` 
 - **Model: claude-opus-4-8**
 - Why: No strong cloud lock-in shows up in your stack, so the default is Claude Opus, the strongest model for the reasoning-heavy strategy work Aletheia does.
 
-`python aletheia.py setup` will detect this and offer to write it to your
-`.env` for you.
+`python aletheia.py setup` asks which service you want to run her on (this is
+the suggested default) and writes it to your `.env`.
+
+## Services you can run her on
+
+You are not limited to one provider. `setup` offers these, and you can switch any
+time:
+
+| Service | What it gives you |
+|---|---|
+| Anthropic API | Claude direct (the default for reasoning-heavy work). |
+| OpenAI API | GPT direct. |
+| OpenRouter | One key, many models (Claude, GPT, Gemini, Llama, open-weights) - and an easy way to compare them with `python aletheia.py eval`. |
+| A local / self-hosted server | Ollama, vLLM, or LM Studio - runs on your hardware, nothing leaves your network. |
+| Any other OpenAI-compatible service | Azure OpenAI, Together, Groq, Fireworks, and the like. |
+
+Everything except Anthropic runs through the OpenAI backend by pointing
+`OPENAI_BASE_URL` at the service; your key goes in `OPENAI_API_KEY`. `setup`
+sets the URL for you and tells you which key to fill.
 
 ## The general guidance
 

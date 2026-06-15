@@ -296,30 +296,100 @@ def recommend_model(stack: list[str]) -> tuple:
             "the strongest model for the reasoning-heavy strategy work Aletheia does.")
 
 
+# Services Aletheia can run on. Most are OpenAI-compatible -- the openai backend
+# reaches them by pointing OPENAI_BASE_URL at the service -- so one backend
+# covers OpenRouter, Azure, the open-weights hosts, and local servers; Anthropic
+# is direct. setup asks which one the buyer wants.
+SERVICES = [
+    {"key": "anthropic", "label": "Anthropic API (Claude direct)",
+     "provider": "anthropic", "base_url": "", "key_var": "ANTHROPIC_API_KEY",
+     "model": "claude-opus-4-8",
+     "note": "Claude direct -- strongest for the reasoning-heavy strategy work."},
+    {"key": "openai", "label": "OpenAI API (GPT direct)",
+     "provider": "openai", "base_url": "", "key_var": "OPENAI_API_KEY",
+     "model": "gpt-5", "note": "GPT direct."},
+    {"key": "openrouter",
+     "label": "OpenRouter (one key, many models: Claude, GPT, Gemini, Llama)",
+     "provider": "openai", "base_url": "https://openrouter.ai/api/v1",
+     "key_var": "OPENAI_API_KEY", "model": "anthropic/claude-opus-4-8",
+     "note": "OpenAI-compatible aggregator; switch models without switching keys -- handy for comparing models with `eval`."},
+    {"key": "local",
+     "label": "A local / self-hosted server (Ollama, vLLM, LM Studio)",
+     "provider": "openai", "base_url": "http://localhost:11434/v1",
+     "key_var": "OPENAI_API_KEY", "model": "",
+     "note": "Runs on your hardware; nothing leaves your network."},
+    {"key": "compatible",
+     "label": "Another OpenAI-compatible service (Azure, Together, Groq, Fireworks)",
+     "provider": "openai", "base_url": "", "key_var": "OPENAI_API_KEY", "model": "",
+     "note": "Set the service's endpoint as OPENAI_BASE_URL and your key."},
+]
+
+
+def _recommended_service_key(stack: list[str]) -> str:
+    provider, _, _ = recommend_model(stack)
+    return "anthropic" if provider == "anthropic" else "openai"
+
+
+def _ask(prompt: str) -> str:
+    try:
+        return input(prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        return ""
+
+
 def cmd_setup(pack_dir: Path) -> int:
     stack = _declared_stack(pack_dir)
-    provider, model, why = recommend_model(stack)
-    print("Aletheia setup -- choosing the best model for your stack\n")
+    rec_key = _recommended_service_key(stack)
+    rec_idx = next(i for i, s in enumerate(SERVICES, 1) if s["key"] == rec_key)
+
+    print("Aletheia setup -- choose the service you want to run her on\n")
     if stack:
         print(f"Detected from your audit: {', '.join(stack)}\n")
+    print("She is model-agnostic. Pick the service that fits your environment:\n")
+    for i, s in enumerate(SERVICES, 1):
+        tag = "   [recommended for your stack]" if s["key"] == rec_key else ""
+        print(f"  {i}. {s['label']}{tag}")
+        print(f"     {s['note']}")
+    print("\nSee CHOOSE-YOUR-MODEL.md for the full guidance.\n")
+
+    raw = _ask(f"Which service? [1-{len(SERVICES)}, default {rec_idx}] ")
+    if not raw:
+        choice = SERVICES[rec_idx - 1]
     else:
-        print("No declared stack found in audit-data.json (run `unlock` first, or "
-              "this is the generic template).\n")
-    print(f"Recommended provider: {provider}")
-    print(f"Recommended model:    {model}")
-    print(f"Why: {why}\n")
-    print("See CHOOSE-YOUR-MODEL.md for the full guidance and how to run on any "
-          "other provider.\n")
-    ans = input(f"Write these to .env (provider={provider}, model={model})? [y/N] ").strip().lower()
-    if ans in ("y", "yes"):
-        env = pack_dir / ".env"
-        set_env_var(env, "ALETHEIA_PROVIDER", provider)
+        n = None
+        try:
+            n = int(raw)
+        except ValueError:
+            n = None
+        if n is None or not (1 <= n <= len(SERVICES)):
+            print("Not a listed option; nothing written. Re-run `python aletheia.py setup`.")
+            return 1
+        choice = SERVICES[n - 1]
+
+    # Services we don't preset a URL for (or where the buyer may differ) get asked.
+    base_url = choice["base_url"]
+    if choice["key"] in ("local", "compatible"):
+        shown = f" [{base_url}]" if base_url else ""
+        base_url = _ask(f"Server URL (OPENAI_BASE_URL){shown}: ") or base_url
+
+    model = choice["model"]
+    shown = f" [{model}]" if model else " (the model id your service serves)"
+    model = _ask(f"Model{shown}: ") or model
+
+    env = pack_dir / ".env"
+    set_env_var(env, "ALETHEIA_PROVIDER", choice["provider"])
+    if model:
         set_env_var(env, "ALETHEIA_MODEL", model)
-        key_var = "ANTHROPIC_API_KEY" if provider == "anthropic" else "OPENAI_API_KEY"
-        print(f"\nWrote .env. Now add your {key_var} to .env, then run `python aletheia.py`.")
-    else:
-        print("\nNothing written. Set ALETHEIA_PROVIDER / ALETHEIA_MODEL in .env yourself, "
-              "or pass --provider / --model when you run.")
+    if base_url:
+        set_env_var(env, "OPENAI_BASE_URL", base_url)
+
+    print(f"\nWrote .env: provider={choice['provider']}"
+          + (f", model={model}" if model else "")
+          + (f", OPENAI_BASE_URL={base_url}" if base_url else ""))
+    note = (" (for OpenRouter or a compatible service, your key goes in OPENAI_API_KEY)"
+            if choice["provider"] == "openai" and base_url else "")
+    print(f"Now put your key in {choice['key_var']} in .env{note}. "
+          "Then run `python aletheia.py`.")
     return 0
 
 

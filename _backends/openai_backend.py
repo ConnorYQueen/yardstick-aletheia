@@ -7,7 +7,7 @@ Pure OpenAI SDK. Run the agent on GPT instead of Claude with:
 The neutral {role, content} history the runner keeps works as-is; the
 system prompt is prepended as a system message.
 """
-from __future__ import annotations
+import os
 
 API_KEY_VAR = "OPENAI_API_KEY"
 
@@ -21,7 +21,11 @@ def default_model() -> str:
 def make_client():
     from openai import OpenAI
     # Reads OPENAI_API_KEY from the environment (the runner also loads .env).
-    return OpenAI()
+    # OPENAI_BASE_URL points this backend at any OpenAI-compatible service --
+    # OpenRouter, Azure, Together / Groq / Fireworks, or a local Ollama / vLLM /
+    # LM Studio server -- so one backend covers every non-Anthropic option.
+    base = os.environ.get("OPENAI_BASE_URL")
+    return OpenAI(base_url=base) if base else OpenAI()
 
 
 def _open_stream(client, model, chat, max_tokens):
