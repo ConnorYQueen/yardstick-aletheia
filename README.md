@@ -54,7 +54,10 @@ recommends the best fit for your stack and writes it to `.env`. See
 `CHOOSE-YOUR-MODEL.md`. To run on OpenAI: `pip install openai` then
 `python aletheia.py --provider openai`. Override per run with `--model`, or set
 `ALETHEIA_PROVIDER` / `ALETHEIA_MODEL` in `.env`. Adding another provider is
-one small file in `_backends/` exposing the same functions.
+one small file in `_backends/` exposing the same functions. To run her fully
+self-hosted - nothing leaving your network - point the OpenAI backend at a local
+OpenAI-compatible server (Ollama, vLLM, LM Studio) with `OPENAI_BASE_URL`; see
+`CHOOSE-YOUR-MODEL.md`.
 
 ## Measure model cost per task
 

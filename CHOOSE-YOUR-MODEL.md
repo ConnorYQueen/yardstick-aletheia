@@ -35,5 +35,20 @@ is already done.
   matching API key (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`).
 - Per run: `python aletheia.py --provider openai --model gpt-5`.
 
+## Run her fully self-hosted (maximum data control)
+
+If you want nothing to leave your network, run Aletheia on a local,
+OpenAI-compatible server - Ollama, vLLM, and LM Studio all expose one:
+
+- `--provider openai` (the OpenAI backend speaks the compatible API),
+- set `OPENAI_BASE_URL` to your local server and `OPENAI_API_KEY` to any
+  non-empty value it accepts,
+- set `ALETHEIA_MODEL` to the model your server serves.
+
+Her reasoning then runs on hardware you control, on data that never leaves it.
+This is the deepest form of owning your substrate; she can also build you a plan
+for self-hosting the rest of your AI stack (ask her, or see the
+self-hosting-readiness skill and https://github.com/mikeroyal/Self-Hosting-Guide).
+
 Anthropic and OpenAI are built in. Any other provider is one small file in
-`_backends/` exposing the same four functions the existing backends do.
+`_backends/` exposing the same functions the existing backends do.
