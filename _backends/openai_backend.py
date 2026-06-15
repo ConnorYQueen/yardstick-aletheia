@@ -51,3 +51,31 @@ def stream_reply(client, system, messages, model, max_tokens):
         delta = chunk.choices[0].delta
         if delta and delta.content:
             yield delta.content
+
+
+def complete_once(client, system, messages, model, max_tokens):
+    """One non-streaming completion -> {text, input_tokens, output_tokens}.
+
+    Used by the cost-per-outcome eval harness; reads real token usage off the
+    response. Honors --max-tokens across model families (newer take
+    max_completion_tokens, older max_tokens), then falls back to no cap."""
+    chat = [{"role": "system", "content": system}] + messages
+    base = dict(model=model, messages=chat)
+    resp = None
+    for attempt in ({"max_completion_tokens": max_tokens},
+                    {"max_tokens": max_tokens}, {}):
+        try:
+            resp = client.chat.completions.create(**base, **attempt)
+            break
+        except Exception:
+            resp = None
+            continue
+    if resp is None:
+        resp = client.chat.completions.create(**base)
+    text = (resp.choices[0].message.content or "") if resp.choices else ""
+    u = getattr(resp, "usage", None)
+    return {
+        "text": text,
+        "input_tokens": int(getattr(u, "prompt_tokens", 0) or 0),
+        "output_tokens": int(getattr(u, "completion_tokens", 0) or 0),
+    }

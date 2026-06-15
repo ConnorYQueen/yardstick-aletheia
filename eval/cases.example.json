@@ -1,0 +1,24 @@
+{
+  "task": "Extract the company and the buying intent from an inbound sales email",
+  "note": "Deterministic checks fit routine, high-volume steps (extraction, classification, formatting) - the steps where model routing saves the most. Judgment-heavy steps stay on the frontier model and are not what this harness is for. Replace these with cases from your own task; ask Aletheia to write a set for you.",
+  "cases": [
+    {
+      "name": "clear-demo-request",
+      "system": "Extract two fields from the email. Reply with only: company=<name>; intent=<one of: demo, pricing, support, other>",
+      "prompt": "From: jane@acme.io\nSubject: next steps\nHi, we saw your platform and would like to book a demo next week for our ops team.",
+      "checks": [
+        {"type": "contains", "value": "Acme"},
+        {"type": "contains", "value": "demo"}
+      ]
+    },
+    {
+      "name": "pricing-question",
+      "system": "Extract two fields from the email. Reply with only: company=<name>; intent=<one of: demo, pricing, support, other>",
+      "prompt": "From: ops@northwind.co\nSubject: cost\nWhat does your enterprise plan run for 200 seats?",
+      "checks": [
+        {"type": "contains", "value": "Northwind"},
+        {"type": "contains", "value": "pricing"}
+      ]
+    }
+  ]
+}

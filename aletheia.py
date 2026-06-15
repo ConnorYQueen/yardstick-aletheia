@@ -58,9 +58,10 @@ BACKENDS = {
 #   @aletheia:deck   title="..."   ... JSON spec ...          -> artifacts/<slug>.pptx
 #   @aletheia:doc    title="..."   ... JSON spec ...          -> artifacts/<slug>.pdf
 #   @aletheia:sheet  title="..."   ... JSON spec ...          -> artifacts/<slug>.xlsx
+#   @aletheia:eval   <name>        ... JSON cases ...         -> eval/<name>.cases.json
 # Each block ends with a line: @aletheia:end
 DIRECTIVE_RE = re.compile(
-    r"@aletheia:(memory|skill|brand|deck|doc|sheet)[ \t]*([^\n]*?)[ \t]*\n(.*?)\n@aletheia:end",
+    r"@aletheia:(memory|skill|brand|deck|doc|sheet|eval)[ \t]*([^\n]*?)[ \t]*\n(.*?)\n@aletheia:end",
     re.DOTALL,
 )
 
@@ -199,6 +200,20 @@ def apply_directives(reply: str, pack_dir: Path) -> str:
                 (pack_dir / "brand.json").write_text(
                     json.dumps(data, indent=2), encoding="utf-8")
                 return "[saved branding + compliance settings: brand.json]"
+            if kind == "eval":
+                try:
+                    data = json.loads(content)
+                except json.JSONDecodeError:
+                    return "[skipped eval: the cases block was not valid JSON]"
+                name = (_safe_member(arg).split("/")[0] or "cases")
+                for suffix in (".json", ".cases"):
+                    if name.endswith(suffix):
+                        name = name[: -len(suffix)]
+                dest = pack_dir / "eval" / f"{name}.cases.json"
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                return (f"[saved eval cases: eval/{name}.cases.json -- run "
+                        f"`python aletheia.py eval --cases eval/{name}.cases.json`]")
             if kind in _artifacts.BUILDERS:
                 try:
                     spec = json.loads(content)
@@ -446,16 +461,74 @@ def cmd_check(args, pack_dir: Path) -> int:
     return 0
 
 
+def cmd_eval(args, pack_dir: Path) -> int:
+    """Measure cost per outcome across models for one task, so a routing call is
+    evidence, not a guess. Calls only the providers in your models file, on your
+    key -- the same trust boundary as a normal session."""
+    if not prompt_for_code(pack_dir):
+        return 1
+    import _eval
+    cases_path = Path(args.cases) if args.cases else pack_dir / "eval" / "cases.example.json"
+    models_path = Path(args.models) if args.models else pack_dir / "eval" / "models.example.json"
+    if not cases_path.exists():
+        raise SystemExit(f"No cases file at {cases_path}. Copy eval/cases.example.json and "
+                         "edit it, or ask Aletheia to write a set for your task.")
+    if not models_path.exists():
+        raise SystemExit(f"No models file at {models_path}. Copy eval/models.example.json and "
+                         "set the models + prices you want to compare.")
+    cases = _eval.load_cases(cases_path)
+    models = _eval.load_models(models_path)
+
+    target = args.target
+    if target is None:
+        try:
+            raw = json.loads(models_path.read_text(encoding="utf-8"))
+            target = float(raw.get("target_pass_rate", 0.9)) if isinstance(raw, dict) else 0.9
+        except (json.JSONDecodeError, OSError, ValueError, TypeError):
+            target = 0.9
+
+    clients: dict = {}
+
+    def complete_fn(provider, model, system, prompt, max_tokens):
+        provider = (provider or "anthropic").lower()
+        if provider not in BACKENDS:
+            raise RuntimeError(f"unknown provider {provider!r}")
+        if provider not in clients:
+            backend = importlib.import_module(BACKENDS[provider])
+            if not os.environ.get(backend.API_KEY_VAR):
+                raise RuntimeError(f"{backend.API_KEY_VAR} not set")
+            clients[provider] = (backend, backend.make_client())
+        backend, client = clients[provider]
+        return backend.complete_once(
+            client, system, [{"role": "user", "content": prompt}], model, max_tokens)
+
+    print(f"Running {len(cases)} case(s) across {len(models)} model(s) "
+          "(this calls each provider on your key)...\n")
+    results = _eval.run_eval(cases, models, complete_fn, args.max_tokens)
+    report = _eval.render_report(results, target)
+    print(report)
+    out = pack_dir / "eval" / "report.md"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(report, encoding="utf-8")
+    print(f"[saved: {out.relative_to(pack_dir).as_posix()}]")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Aletheia - your Yardstick strategy agent.")
     ap.add_argument("command", nargs="?", default="run",
-                    choices=["run", "setup", "unlock", "check"],
-                    help="run (default), setup (pick a model), unlock <CODE>, check.")
+                    choices=["run", "setup", "unlock", "check", "eval"],
+                    help="run (default), setup (pick a model), unlock <CODE>, check, "
+                         "eval (measure cost per outcome across models).")
     ap.add_argument("code", nargs="?", help="integration code (for `unlock`).")
     ap.add_argument("--provider", choices=sorted(BACKENDS))
     ap.add_argument("--model")
     ap.add_argument("--max-tokens", type=int, default=8000)
     ap.add_argument("--dir", type=Path, default=HERE)
+    ap.add_argument("--cases", help="eval: path to a cases JSON (default eval/cases.example.json).")
+    ap.add_argument("--models", help="eval: path to a models JSON (default eval/models.example.json).")
+    ap.add_argument("--target", type=float, default=None,
+                    help="eval: target pass rate 0-1 (default from the models file, else 0.9).")
     ap.add_argument("--check", action="store_true", help=argparse.SUPPRESS)  # legacy alias
     args = ap.parse_args()
 
@@ -469,6 +542,8 @@ def main() -> int:
         return cmd_setup(pack_dir)
     if args.command == "unlock":
         return cmd_unlock(pack_dir, args.code or "")
+    if args.command == "eval":
+        return cmd_eval(args, pack_dir)
     return cmd_run(args, pack_dir)
 
 

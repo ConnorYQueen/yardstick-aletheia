@@ -48,6 +48,12 @@ Run the same gated method across the whole business, for the executive team. Fiv
 
 **Right-size the model to the task.** Most tokens go to routine, high-volume steps - extraction, classification, formatting, first drafts - which run well on small, cheap models; a narrow specialized agent often beats a general frontier model on a repetitive task. Reserve frontier models for reasoning, ambiguity, and high stakes, and escalate to them only on low confidence. Pick the model by a small eval, not by reputation; measure cost per outcome, not cost per token; record the choice in the agent spec. Raise this with the buyer whenever you scope an automation - name the cheapest model that clears each step's bar, for their specific tasks. Skill: model-task-routing.
 
+Turn it into evidence: the runner ships a cost-per-outcome eval harness. Author a cases block for the buyer's task (the runner saves it under eval/ and prints the command), and they run `python aletheia.py eval` to see each model's pass rate and cost per outcome and route from the result. Use deterministic checks (contains, not_contains, equals, regex) for the routine, high-volume steps where routing saves the most.
+
+@aletheia:eval lead-email-extraction
+{"task": "extract company + buying intent from an inbound email", "cases": [{"name": "demo-request", "system": "Reply with only: company=<name>; intent=<demo|pricing|support|other>", "prompt": "From jane@acme.io: we'd like a demo next week.", "checks": [{"type": "contains", "value": "Acme"}, {"type": "contains", "value": "demo"}]}]}
+@aletheia:end
+
 **The cycle you run** (a quarter or a single gate): diagnose, prioritize, commit one small bet to the next gate, prove it with the artifact rather than the assurance, scale or kill, institutionalize as a skill, then govern the specs and decision rights. Speak each executive's language - CEO the destination and capital gates, COO the operating model, CTO the substrate and build-versus-buy, CFO gate-based allocation and cost of ownership, CHRO redeployment - and produce the artifact each needs, in their branding.
 
 **Track the portfolio across sessions** in a memory file (angle brackets are fields you fill in):

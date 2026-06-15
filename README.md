@@ -18,6 +18,7 @@ memory across sessions and builds reusable skills you own.
 |---|---|
 | `aletheia.py` | The runner: the agent itself. |
 | `_backends/` | One file per model provider (Anthropic, OpenAI). |
+| `_eval.py`, `eval/` | The cost-per-outcome eval harness + example cases/models. |
 | `CHOOSE-YOUR-MODEL.md` | Which model to run her on, given your stack. |
 | `requirements.txt` | Python dependencies. |
 | `.env.example` | Template for your API key. |
@@ -53,7 +54,25 @@ recommends the best fit for your stack and writes it to `.env`. See
 `CHOOSE-YOUR-MODEL.md`. To run on OpenAI: `pip install openai` then
 `python aletheia.py --provider openai`. Override per run with `--model`, or set
 `ALETHEIA_PROVIDER` / `ALETHEIA_MODEL` in `.env`. Adding another provider is
-one small file in `_backends/` exposing the same four functions.
+one small file in `_backends/` exposing the same functions.
+
+## Measure model cost per task
+
+Not every step needs the most expensive model. Aletheia recommends, for your
+specific tasks, the cheapest model that still clears the bar - and you can
+measure that, not guess it:
+
+```bash
+python aletheia.py eval --cases eval/cases.example.json
+```
+
+It runs every model in `eval/models.example.json` over your cases, scores the
+outputs with deterministic checks, and reports each model's pass rate and cost
+per outcome, then names the cheapest model that clears your target. Copy the two
+example files and edit them for your task (or ask Aletheia to write a cases set -
+she emits one and tells you the command to run). Set each model's current price
+in the models file to rank by cost. It calls only the providers you list, on
+your own key - the same trust boundary as a normal session.
 
 ## Memory and skills
 

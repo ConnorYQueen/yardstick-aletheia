@@ -72,3 +72,25 @@ def stream_reply(client, system, messages, model, max_tokens):
             yield from _stream(client, system, messages, model, max_tokens, advanced=False)
         else:
             raise
+
+
+def complete_once(client, system, messages, model, max_tokens):
+    """One non-streaming completion -> {text, input_tokens, output_tokens}.
+
+    Used by the cost-per-outcome eval harness. Plain settings (no adaptive
+    thinking / effort) so the eval measures the model the way a deployed
+    workflow would run it, and reads real token usage off the response."""
+    resp = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        system=[{"type": "text", "text": system}],
+        messages=messages,
+    )
+    text = "".join(getattr(b, "text", "") for b in resp.content
+                   if getattr(b, "type", "") == "text")
+    u = getattr(resp, "usage", None)
+    return {
+        "text": text,
+        "input_tokens": int(getattr(u, "input_tokens", 0) or 0),
+        "output_tokens": int(getattr(u, "output_tokens", 0) or 0),
+    }

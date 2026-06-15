@@ -1,0 +1,9 @@
+{
+  "note": "Set price_per_million_input/output from your provider's CURRENT pricing - prices change often, so verify before trusting the cost column. Add or remove rows to compare only the models you can actually run on your key. Leave a price at 0 to compare on pass rate and tokens alone; set both to rank by cost per outcome.",
+  "target_pass_rate": 0.9,
+  "models": [
+    {"name": "frontier", "provider": "anthropic", "model": "claude-opus-4-8", "price_per_million_input": 0, "price_per_million_output": 0},
+    {"name": "mid", "provider": "anthropic", "model": "claude-sonnet-4-6", "price_per_million_input": 0, "price_per_million_output": 0},
+    {"name": "cheap", "provider": "openai", "model": "gpt-4o-mini", "price_per_million_input": 0, "price_per_million_output": 0}
+  ]
+}
