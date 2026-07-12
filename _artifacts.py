@@ -1,4 +1,5 @@
-"""Local artifact builders for Aletheia: decks, documents, and financial models.
+"""Local artifact builders for Aletheia: decks, documents, financial models,
+and the autonomy dashboard.
 
 Aletheia produces a structured spec (JSON) for an artifact; this module renders
 it into a real file on the customer's machine, applying their branding and the
@@ -9,7 +10,8 @@ safe for locked-down and regulated environments.
 
 Builders are dependency-light and optional: a customer only needs the library
 for the artifact type they ask for. Missing a library returns a clear
-"pip install" message instead of crashing the session.
+"pip install" message instead of crashing the session. The dashboard builder
+needs no library at all -- it is pure stdlib HTML.
 
 brand.json (written by Aletheia after she asks for branding + compliance):
     {
@@ -294,5 +296,115 @@ def build_sheet(title: str, spec: dict, brand: dict, pack_dir: Path, out: Path) 
     return f"[created financial model: {out.relative_to(pack_dir).as_posix()}]"
 
 
-BUILDERS = {"deck": build_deck, "doc": build_doc, "sheet": build_sheet}
-EXT = {"deck": "pptx", "doc": "pdf", "sheet": "xlsx"}
+# ---------------------------------------------------------------------------
+# Autonomy dashboard (HTML) -- the standing scorecard for gate reviews
+# ---------------------------------------------------------------------------
+# Pure stdlib: the dashboard must build on any machine with zero optional
+# libraries, because it is the artifact a buyer opens most often. Aletheia
+# regenerates it whenever the numbers move; the file is self-contained and
+# safe to email or drop into a shared drive.
+
+def build_dashboard(title: str, spec: dict, brand: dict, pack_dir: Path, out: Path) -> str:
+    import html as _html
+
+    def esc(v) -> str:
+        return _html.escape(str(v if v is not None else ""))
+
+    primary = "#" + _hex(brand["primary"])
+    accent = "#" + _hex(brand["accent"])
+    company = brand.get("company", "")
+    footer = brand.get("confidentiality_footer", "")
+    classif = brand.get("classification", "")
+
+    stage = spec.get("stage") or {}
+    savings = spec.get("savings") or {}
+    workflows = spec.get("workflows") or []
+    rungs = ["L0", "L1", "L2", "L3", "L4", "L5"]
+
+    def rung_ladder(current: str, target: str) -> str:
+        cells = []
+        for r in rungs:
+            style = "background:#e5e7eb;color:#374151;"
+            if r == str(current or "").upper():
+                style = f"background:{primary};color:#fff;font-weight:700;"
+            elif r == str(target or "").upper():
+                style = f"background:{accent};color:#fff;font-weight:700;"
+            cells.append(f'<td style="padding:4px 10px;text-align:center;{style}">{esc(r)}</td>')
+        return "<table style='border-collapse:collapse'><tr>" + "".join(cells) + "</tr></table>"
+
+    gate_color = {"passed": "#177245", "on_track": "#177245", "at_risk": "#B7791F",
+                  "blocked": "#B03A2E", "pending": "#4B5563"}
+
+    def li_block(heading: str, items: list) -> str:
+        if not items:
+            return ""
+        lis = "".join(f"<li>{esc(i)}</li>" for i in items)
+        return (f'<h2 style="color:{primary};font-size:16px;margin:24px 0 8px">{esc(heading)}</h2>'
+                f'<ul style="margin:0;padding-left:20px;line-height:1.6">{lis}</ul>')
+
+    wf_rows = []
+    for w in workflows:
+        status = str(w.get("gate_status") or "pending").lower()
+        color = gate_color.get(status, "#4B5563")
+        wf_rows.append(
+            "<tr>"
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb">{esc(w.get("name"))}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:center">{esc(w.get("rung"))}'
+            f' &rarr; {esc(w.get("target_rung"))}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb">{esc(w.get("gate"))}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;color:{color};font-weight:600">'
+            f'{esc(status.replace("_", " "))}</td>'
+            f'<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb">{esc(w.get("owner"))}</td>'
+            "</tr>")
+    wf_table = ""
+    if wf_rows:
+        wf_table = (
+            f'<h2 style="color:{primary};font-size:16px;margin:24px 0 8px">Workflows</h2>'
+            '<table style="border-collapse:collapse;width:100%;font-size:13px">'
+            f'<tr style="background:{primary};color:#fff">'
+            '<th style="padding:6px 10px;text-align:left">Workflow</th>'
+            '<th style="padding:6px 10px">Rung</th>'
+            '<th style="padding:6px 10px;text-align:left">Next gate</th>'
+            '<th style="padding:6px 10px;text-align:left">Status</th>'
+            '<th style="padding:6px 10px;text-align:left">Owner</th></tr>'
+            + "".join(wf_rows) + "</table>")
+
+    stat_cells = []
+    for label, val in (
+            ("Stage", f'{stage.get("current", "")} ({stage.get("score", "")})'),
+            ("Target", f'{stage.get("target", "")} ({stage.get("target_score", "")}) by {stage.get("target_date", "")}'),
+            ("Projected annual savings", savings.get("projected_annual", "")),
+            ("Realized to date", savings.get("realized_to_date", ""))):
+        stat_cells.append(
+            '<div style="flex:1;min-width:160px;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px">'
+            f'<div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">{esc(label)}</div>'
+            f'<div style="font-size:18px;font-weight:700;color:{primary};margin-top:4px">{esc(val)}</div></div>')
+
+    classif_line = (f'<div style="text-align:right;color:{accent};font-weight:700;'
+                    f'font-size:11px;letter-spacing:.08em">{esc(classif.upper())}</div>') if classif else ""
+    foot = " / ".join(p for p in (company, footer) if p)
+
+    doc = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>{esc(title)}</title></head>
+<body style="font-family:{esc(brand.get('font') or 'Helvetica')},Arial,sans-serif;color:#1f2937;max-width:860px;margin:32px auto;padding:0 20px">
+{classif_line}
+<h1 style="color:{primary};font-size:26px;margin:8px 0 4px">{esc(title)}</h1>
+<div style="color:#6b7280;font-size:13px;margin-bottom:20px">{esc(company)}</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap">{"".join(stat_cells)}</div>
+<h2 style="color:{primary};font-size:16px;margin:24px 0 8px">Autonomy ladder</h2>
+{rung_ladder(stage.get("current_rung") or stage.get("current"), stage.get("target_rung") or stage.get("target"))}
+{wf_table}
+{li_block("Wins", spec.get("wins") or [])}
+{li_block("Risks", spec.get("risks") or [])}
+{li_block("Next gates", spec.get("next_gates") or [])}
+<div style="margin-top:36px;padding-top:12px;border-top:2px solid {accent};color:#6b7280;font-size:11px">{esc(foot)}</div>
+</body></html>
+"""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(doc, encoding="utf-8")
+    return f"[created dashboard: {out.relative_to(pack_dir).as_posix()}]"
+
+
+BUILDERS = {"deck": build_deck, "doc": build_doc, "sheet": build_sheet,
+            "dashboard": build_dashboard}
+EXT = {"deck": "pptx", "doc": "pdf", "sheet": "xlsx", "dashboard": "html"}

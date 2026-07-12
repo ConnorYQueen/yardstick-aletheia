@@ -14,6 +14,8 @@ Commands:
     python aletheia.py unlock CODE      # enter the code from your PDF / PowerPoint
     python aletheia.py setup            # pick the best model for your stack
     python aletheia.py                  # start (or resume) a coaching session
+    python aletheia.py update           # refresh the runner from the public repo
+    python aletheia.py status           # portfolio view of your automation projects
     python aletheia.py --check          # verify setup without an API call
 
 The first time you run her she asks for your integration code; it's printed in
@@ -28,8 +30,12 @@ Files this folder uses:
     CHOOSE-YOUR-MODEL.md which model to run her on, given your stack
     memory/              persistent notes Aletheia keeps across sessions
     skills/              reusable skills Aletheia builds for you
+    sessions/            transcripts of your sessions (JSONL, local only)
+    data/                optional: drop CSV/JSON/text exports here and she
+                         reads summaries of them as measured inputs
 
-Nothing is sent anywhere except to the model provider you choose.
+The only network calls are to the model provider you choose, plus the explicit
+`unlock` and `update` fetches from Yardstick.
 """
 from __future__ import annotations
 
@@ -58,10 +64,11 @@ BACKENDS = {
 #   @aletheia:deck   title="..."   ... JSON spec ...          -> artifacts/<slug>.pptx
 #   @aletheia:doc    title="..."   ... JSON spec ...          -> artifacts/<slug>.pdf
 #   @aletheia:sheet  title="..."   ... JSON spec ...          -> artifacts/<slug>.xlsx
+#   @aletheia:dashboard title="..." ... JSON spec ...         -> artifacts/<slug>.html
 #   @aletheia:eval   <name>        ... JSON cases ...         -> eval/<name>.cases.json
 # Each block ends with a line: @aletheia:end
 DIRECTIVE_RE = re.compile(
-    r"@aletheia:(memory|skill|brand|deck|doc|sheet|eval)[ \t]*([^\n]*?)[ \t]*\n(.*?)\n@aletheia:end",
+    r"@aletheia:(memory|skill|brand|deck|doc|sheet|dashboard|eval)[ \t]*([^\n]*?)[ \t]*\n(.*?)\n@aletheia:end",
     re.DOTALL,
 )
 
@@ -231,6 +238,93 @@ def apply_directives(reply: str, pack_dir: Path) -> str:
 
 
 # ---------------------------------------------------------------------------
+# local data ingestion (opt-in: files the buyer drops into data/)
+# ---------------------------------------------------------------------------
+# Summaries only, never whole files: column shapes + a few sample rows for
+# tabular data, a head excerpt for text. The block is labeled [MEASURED]
+# because these are the buyer's own exports, read locally -- nothing is
+# uploaded anywhere except to the model provider with the rest of the prompt.
+
+DATA_TOTAL_BUDGET = 60_000     # chars across all summarized files
+DATA_TEXT_EXCERPT = 4_000      # chars of head excerpt per text/JSON file
+DATA_CSV_ROW_CAP = 20_000      # rows read per CSV before we stop counting stats
+DATA_CELL_CAP = 120            # chars per sample cell
+
+
+def _summarize_csv(path: Path, delimiter: str) -> str:
+    import csv
+    with path.open(newline="", encoding="utf-8", errors="replace") as fh:
+        reader = csv.reader(fh, delimiter=delimiter)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return "(empty file)"
+        samples, stats, rows = [], {}, 0
+        for row in reader:
+            rows += 1
+            if len(samples) < 5:
+                samples.append([c[:DATA_CELL_CAP] for c in row[:len(header)]])
+            for i, cell in enumerate(row[:len(header)]):
+                try:
+                    v = float(cell.replace(",", ""))
+                except ValueError:
+                    continue
+                lo, hi, tot, n = stats.get(i, (v, v, 0.0, 0))
+                stats[i] = (min(lo, v), max(hi, v), tot + v, n + 1)
+            if rows >= DATA_CSV_ROW_CAP:
+                break
+    lines = [f"columns: {', '.join(h[:DATA_CELL_CAP] for h in header)}",
+             f"rows: {rows}{'+' if rows >= DATA_CSV_ROW_CAP else ''}"]
+    for i, (lo, hi, tot, n) in sorted(stats.items()):
+        if n >= max(2, rows // 2) and i < len(header):
+            lines.append(f"{header[i][:DATA_CELL_CAP]}: min {lo:g}, max {hi:g}, "
+                         f"mean {tot / n:g} (over {n} numeric values)")
+    if samples:
+        lines.append("sample rows:")
+        lines.extend("  " + " | ".join(r) for r in samples)
+    return "\n".join(lines)
+
+
+def load_local_data(pack_dir: Path) -> str:
+    """Summaries of files the buyer put in data/. Empty string if none."""
+    data_dir = pack_dir / "data"
+    if not data_dir.is_dir():
+        return ""
+    files = sorted(p for p in data_dir.iterdir()
+                   if p.is_file() and p.suffix.lower() in
+                   (".csv", ".tsv", ".json", ".md", ".txt"))
+    if not files:
+        return ""
+    blocks = ["## The buyer's local data files (data/)\n",
+              "These are [MEASURED] values: the buyer's own exports, dropped "
+              "into the data/ folder and summarized locally. Ground numeric "
+              "claims in them where they apply.\n"]
+    used = sum(len(b) for b in blocks)
+    skipped = []
+    for f in files:
+        if used >= DATA_TOTAL_BUDGET:
+            skipped.append(f.name)
+            continue
+        try:
+            if f.suffix.lower() in (".csv", ".tsv"):
+                body = _summarize_csv(f, "\t" if f.suffix.lower() == ".tsv" else ",")
+            else:
+                text = f.read_text(encoding="utf-8", errors="replace").strip()
+                body = text[:DATA_TEXT_EXCERPT]
+                if len(text) > DATA_TEXT_EXCERPT:
+                    body += f"\n... (excerpt; file is {len(text):,} chars)"
+        except Exception as e:
+            body = f"(could not read: {e})"
+        block = f"### data/{f.name}\n\n{body}\n"
+        blocks.append(block)
+        used += len(block)
+    if skipped:
+        blocks.append(f"(budget reached; not summarized: {', '.join(skipped)} -- "
+                      "ask the buyer about these directly)")
+    return "\n".join(blocks).strip()
+
+
+# ---------------------------------------------------------------------------
 # system prompt
 # ---------------------------------------------------------------------------
 
@@ -255,6 +349,9 @@ def build_system_prompt(pack_dir: Path) -> str:
                    "results off their Yardstick report and tell you: their score, "
                    "their stage, and their per-dimension scores. Capture what they "
                    "give you to a memory file so you keep it.\n")
+    local_data = load_local_data(pack_dir)
+    if local_data:
+        prompt += "\n\n" + local_data + "\n"
     saved = load_memory_and_skills(pack_dir)
     if saved:
         prompt += "\n\n" + saved + "\n"
@@ -414,11 +511,32 @@ def mark_unlocked(pack_dir: Path, code: str) -> None:
     (pack_dir / UNLOCK_MARKER).write_text(code.strip().upper() + "\n", encoding="utf-8")
 
 
-def cmd_unlock(pack_dir: Path, code: str) -> int:
+def _maybe_fetch_personalized(pack_dir: Path, code: str, email: str | None = None) -> None:
+    """Offer to fetch the buyer's personalized pack files from Yardstick.
+
+    Only fires when audit-data.json is absent (a repo clone rather than the
+    shipped zip). A fetch failure never blocks the local unlock -- Aletheia
+    still runs; the buyer can retry or read their numbers to her.
+    """
+    if (pack_dir / "audit-data.json").exists():
+        return
+    if not email:
+        email = _ask("Email you purchased with (fetches your personalized audit "
+                     "files; Enter to skip): ")
+    if not email:
+        return
+    import _sync
+    print("Fetching your personalized files from Yardstick...")
+    ok, message = _sync.fetch_pack(pack_dir, code, email)
+    print(message)
+
+
+def cmd_unlock(pack_dir: Path, code: str, email: str | None = None) -> int:
     if not code_is_valid(code):
         raise SystemExit("That code wasn't accepted. Find your integration code in "
                          "your Full AI Deployment PDF or PowerPoint.")
     mark_unlocked(pack_dir, code)
+    _maybe_fetch_personalized(pack_dir, code, email)
     print("Unlocked. Run `python aletheia.py setup` to pick your model, then "
           "`python aletheia.py`.")
     return 0
@@ -439,6 +557,7 @@ def prompt_for_code(pack_dir: Path) -> bool:
             return False
         if code_is_valid(code):
             mark_unlocked(pack_dir, code)
+            _maybe_fetch_personalized(pack_dir, code)
             print("Unlocked.\n")
             return True
         print("That code wasn't accepted. Check your Full AI Deployment PDF or "
@@ -467,6 +586,64 @@ def resolve_backend(args):
     return provider, backend, model
 
 
+def _session_log_path(pack_dir: Path) -> Path:
+    import datetime
+    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    return pack_dir / "sessions" / f"session-{ts}.jsonl"
+
+
+def _log_turn(path: Path, role: str, content: str) -> None:
+    """Append one turn to the session transcript. Best-effort: a full disk or
+    locked file must never kill the live session."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"role": role, "content": content}) + "\n")
+    except OSError:
+        pass
+
+
+def _trim_history(messages: list, budget_chars: int) -> int:
+    """Drop the oldest user/assistant pairs in place once the transcript grows
+    past budget_chars, keeping at least the last 2 completed exchanges plus the
+    pending turn. Returns how many pairs were dropped this call. Memory files
+    carry the long arc; the live window only needs the recent turns."""
+    dropped = 0
+    def total() -> int:
+        return sum(len(m.get("content") or "") for m in messages)
+    # This runs just after the pending user turn is appended, so len is odd;
+    # a floor of 5 leaves two full exchanges (4 messages) plus that turn.
+    while total() > budget_chars and len(messages) > 5:
+        del messages[0:2]
+        dropped += 1
+    return dropped
+
+
+def _offer_exit_summary(backend, client, system, messages, model, max_tokens, pack_dir) -> None:
+    """On a typed exit after a real session, offer to bank the session into
+    memory so the next session starts where this one ended."""
+    if sum(1 for m in messages if m["role"] == "assistant") < 2:
+        return
+    ans = _ask("Save a session summary to memory before you go? [Y/n] ")
+    if ans.lower().startswith("n"):
+        return
+    print("[summarizing...]", flush=True)
+    ask = messages + [{"role": "user", "content":
+        "We are ending this session. Emit ONE @aletheia:memory directive "
+        "updating memory/progress.md with: where we are, decisions made this "
+        "session, and the next actions with owners. Emit the directive block "
+        "and nothing else."}]
+    try:
+        result = backend.complete_once(client, system, ask, model, max_tokens)
+        reply = result.get("text", "") if isinstance(result, dict) else str(result)
+        confirmation = apply_directives(reply, pack_dir)
+        for line in confirmation.splitlines():
+            if line.strip().startswith("["):
+                print(line.strip())
+    except Exception as exc:
+        print(f"[could not save the summary: {exc}]")
+
+
 def cmd_run(args, pack_dir: Path) -> int:
     if not prompt_for_code(pack_dir):
         return 1
@@ -474,31 +651,50 @@ def cmd_run(args, pack_dir: Path) -> int:
     provider, backend, model = resolve_backend(args)
     client = backend.make_client()
     messages: list[dict] = []
+    log_path = _session_log_path(pack_dir)
+    trimmed_pairs = 0
 
     print("=" * 64)
     print("  Aletheia - your Yardstick strategy agent")
     print(f"  {provider} / {model}")
     print("=" * 64)
     print("She coaches from your audit and saves memory + builds skills as you go.")
-    print("Type 'exit' or press Ctrl-D to quit. A good first prompt:\n")
+    print("Type exit or press Ctrl-D to quit. A good first prompt:\n")
     print(f"  {FIRST_PROMPT}\n")
 
     while True:
         try:
             user = input("you > ").strip()
-        except (EOFError, KeyboardInterrupt):
+        except EOFError:
+            # Ctrl-D is an ordinary quit (the banner says so), so give it the
+            # same save-memory offer a typed `exit` gets.
+            print()
+            _offer_exit_summary(backend, client, system, messages, model,
+                                args.max_tokens, pack_dir)
+            return 0
+        except KeyboardInterrupt:
+            # Ctrl-C is an interrupt, not a graceful exit: leave immediately.
             print()
             return 0
         if not user:
             continue
         if user.lower() in ("exit", "quit", ":q"):
+            _offer_exit_summary(backend, client, system, messages, model,
+                                args.max_tokens, pack_dir)
             return 0
 
         messages.append({"role": "user", "content": user})
+        trimmed_pairs += _trim_history(messages, args.history_chars)
+        live_system = system
+        if trimmed_pairs:
+            live_system += (f"\n\n[Context note: the first {trimmed_pairs} "
+                            "exchange(s) of this session were trimmed to fit the "
+                            "context window; trust your memory files for "
+                            "anything from earlier.]")
         print("\naletheia > ", end="", flush=True)
         parts: list[str] = []
         try:
-            for chunk in backend.stream_reply(client, system, messages, model, args.max_tokens):
+            for chunk in backend.stream_reply(client, live_system, messages, model, args.max_tokens):
                 parts.append(chunk)
                 print(chunk, end="", flush=True)
         except KeyboardInterrupt:
@@ -518,6 +714,8 @@ def cmd_run(args, pack_dir: Path) -> int:
                                    if l.strip().startswith("[")), end="")
         print("\n")
         messages.append({"role": "assistant", "content": reply})
+        _log_turn(log_path, "user", user)
+        _log_turn(log_path, "assistant", reply)
 
 
 def cmd_check(args, pack_dir: Path) -> int:
@@ -527,7 +725,63 @@ def cmd_check(args, pack_dir: Path) -> int:
     print(f"OK  model    : {model}")
     print(f"OK  api key  : {backend.API_KEY_VAR} is set")
     print(f"OK  files    : ALETHEIA.md loaded ({len(system):,} chars incl. audit + memory)")
+    data_dir = pack_dir / "data"
+    n_data = sum(1 for p in data_dir.iterdir() if p.is_file()) if data_dir.is_dir() else 0
+    print(f"OK  data     : {n_data} file(s) in data/ "
+          + ("(summarized into her context)" if n_data else "(drop CSV/JSON/text exports there to ground her in your numbers)"))
     print("\nReady. Run `python aletheia.py` to start.")
+    return 0
+
+
+# Field lines cmd_status reads out of a project ledger file. Aletheia maintains
+# these files through the ordinary memory directive (memory/projects/<slug>.md),
+# so the ledger needs no new machinery and travels with the rest of her memory.
+STATUS_FIELDS = ("status", "rung", "owner", "next gate", "gate due", "gate status")
+_STATUS_ORDER = {"active": 0, "paused": 1, "done": 2}
+
+
+def cmd_status(pack_dir: Path) -> int:
+    """Print the automation portfolio from memory/projects/*.md. No API call:
+    this is the harness view of the ledger Aletheia keeps -- one file per
+    automation pod, updated as gates pass. Format + roadmap: ORCHESTRATION.md."""
+    proj_dir = pack_dir / "memory" / "projects"
+    files = sorted(proj_dir.glob("*.md")) if proj_dir.is_dir() else []
+    if not files:
+        print("No projects tracked yet.")
+        print("In a session, ask Aletheia to set up your project ledger: she keeps")
+        print("one memory/projects/<name>.md per automation pod and updates it as")
+        print("gates pass. Then this command shows the whole portfolio at a glance.")
+        return 0
+
+    rows = []
+    for f in files:
+        name, info = f.stem, {}
+        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            s = line.strip()
+            if s.startswith("# ") and "titled" not in info:
+                name = s[2:].strip() or name
+                info["titled"] = "1"
+                continue
+            m = re.match(r"[-*]\s*([A-Za-z ]+):\s*(.+)", s)
+            if m and m.group(1).strip().lower() in STATUS_FIELDS:
+                info[m.group(1).strip().lower()] = m.group(2).strip()
+        rows.append((name, info))
+    rows.sort(key=lambda r: (_STATUS_ORDER.get(r[1].get("status", "").lower(), 0), r[0].lower()))
+
+    headers = ("Project", "Status", "Rung", "Next gate", "Due", "Gate status", "Owner")
+    keys = (None, "status", "rung", "next gate", "gate due", "gate status", "owner")
+    table = [headers]
+    for name, info in rows:
+        table.append(tuple((name if k is None else info.get(k, "-"))[:40] for k in keys))
+    widths = [max(len(r[i]) for r in table) for i in range(len(headers))]
+    for i, r in enumerate(table):
+        print("  ".join(c.ljust(w) for c, w in zip(r, widths)).rstrip())
+        if i == 0:
+            print("  ".join("-" * w for w in widths))
+
+    n_active = sum(1 for _, i in rows if i.get("status", "").lower() == "active")
+    print(f"\n{len(rows)} project(s), {n_active} active. Details: memory/projects/. "
+          "Ask Aletheia for the dashboard to share this with stakeholders.")
     return 0
 
 
@@ -572,10 +826,49 @@ def cmd_eval(args, pack_dir: Path) -> int:
         return backend.complete_once(
             client, system, [{"role": "user", "content": prompt}], model, max_tokens)
 
+    # Optional LLM judge for checks a string match can't score (tone, structure,
+    # "would a customer accept this"). Configured explicitly in the models file:
+    #   "judge": {"provider": "anthropic", "model": "claude-opus-4-8"}
+    judge_fn = None
+    judge_cfg = None
+    try:
+        raw = json.loads(models_path.read_text(encoding="utf-8"))
+        judge_cfg = raw.get("judge") if isinstance(raw, dict) else None
+    except (json.JSONDecodeError, OSError):
+        judge_cfg = None
+    has_judge_checks = any(
+        (chk.get("type") == "judge")
+        for case in cases for chk in (case.get("checks") or []))
+    if has_judge_checks and not judge_cfg:
+        raise SystemExit(
+            'Your cases use "judge" checks, but the models file has no judge '
+            'configured. Add e.g. "judge": {"provider": "anthropic", '
+            '"model": "claude-opus-4-8"} to your models JSON, then re-run.')
+    if judge_cfg:
+        j_provider = str(judge_cfg.get("provider") or "anthropic")
+        j_model = str(judge_cfg.get("model") or "")
+        if not j_model:
+            raise SystemExit('The "judge" entry in your models file needs a "model".')
+
+        def judge_fn(output, criteria):
+            usage = complete_fn(
+                j_provider, j_model,
+                "You are a strict evaluator. Reply with exactly PASS or FAIL "
+                "and nothing else.",
+                f"Criteria: {criteria}\n\nOutput to judge:\n{output}\n\n"
+                "Does the output meet the criteria? Reply PASS or FAIL.",
+                16)
+            up = str(usage.get("text") or "").upper()
+            p, f = up.find("PASS"), up.find("FAIL")
+            return p != -1 and (f == -1 or p < f)
+
     print(f"Running {len(cases)} case(s) across {len(models)} model(s) "
           "(this calls each provider on your key)...\n")
-    results = _eval.run_eval(cases, models, complete_fn, args.max_tokens)
+    results = _eval.run_eval(cases, models, complete_fn, args.max_tokens, judge_fn=judge_fn)
     report = _eval.render_report(results, target)
+    if judge_cfg:
+        report += (f"\n\nJudge: {j_provider}/{j_model} scored the judge checks. "
+                   "Judge calls are not included in the cost columns.\n")
     print(report)
     out = pack_dir / "eval" / "report.md"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -587,13 +880,19 @@ def cmd_eval(args, pack_dir: Path) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Aletheia - your Yardstick strategy agent.")
     ap.add_argument("command", nargs="?", default="run",
-                    choices=["run", "setup", "unlock", "check", "eval"],
+                    choices=["run", "setup", "unlock", "check", "eval", "update", "status"],
                     help="run (default), setup (pick a model), unlock <CODE>, check, "
-                         "eval (measure cost per outcome across models).")
+                         "eval (measure cost per outcome across models), "
+                         "update (refresh the runner from the public repo).")
     ap.add_argument("code", nargs="?", help="integration code (for `unlock`).")
     ap.add_argument("--provider", choices=sorted(BACKENDS))
     ap.add_argument("--model")
     ap.add_argument("--max-tokens", type=int, default=8000)
+    ap.add_argument("--email", help="unlock: the email you purchased with "
+                    "(fetches your personalized audit files).")
+    ap.add_argument("--history-chars", type=int, default=240_000,
+                    help="run: transcript size before the oldest exchanges are "
+                         "trimmed (memory files carry the long arc).")
     ap.add_argument("--dir", type=Path, default=HERE)
     ap.add_argument("--cases", help="eval: path to a cases JSON (default eval/cases.example.json).")
     ap.add_argument("--models", help="eval: path to a models JSON (default eval/models.example.json).")
@@ -611,9 +910,15 @@ def main() -> int:
     if args.command == "setup":
         return cmd_setup(pack_dir)
     if args.command == "unlock":
-        return cmd_unlock(pack_dir, args.code or "")
+        return cmd_unlock(pack_dir, args.code or "", args.email)
     if args.command == "eval":
         return cmd_eval(args, pack_dir)
+    if args.command == "update":
+        import _sync
+        print(_sync.self_update(str(pack_dir)))
+        return 0
+    if args.command == "status":
+        return cmd_status(pack_dir)
     return cmd_run(args, pack_dir)
 
 

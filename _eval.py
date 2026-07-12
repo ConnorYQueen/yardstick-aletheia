@@ -37,7 +37,7 @@ def load_cases(path) -> list[dict]:
             "checks": c.get("checks") or [],
         })
     if not out:
-        raise ValueError(f"No usable cases in {path} (each case needs a 'prompt').")
+        raise ValueError(f"No usable cases in {path} (each case needs a prompt field).")
     return out
 
 
@@ -56,17 +56,21 @@ def load_models(path) -> list[dict]:
             "price_out": float(m.get("price_per_million_output", 0) or 0),
         })
     if not out:
-        raise ValueError(f"No usable models in {path} (each needs a 'model').")
+        raise ValueError(f"No usable models in {path} (each needs a model field).")
     return out
 
 
-def check_output(text: str, checks: list) -> tuple:
-    """Deterministic scoring. Check types: contains, not_contains, equals,
-    iequals, regex. All must pass. Returns (passed, failed_descriptions).
+def check_output(text: str, checks: list, judge_fn=None) -> tuple:
+    """Score one output. Check types: contains, not_contains, equals, iequals,
+    regex (deterministic), plus judge (an LLM scores the output against the
+    check's value as pass/fail criteria). All must pass. Returns
+    (passed, failed_descriptions).
 
     Deterministic checks fit the routine, high-volume steps where model routing
-    saves the most; judgment-heavy steps stay on the frontier model and are not
-    what this harness is for."""
+    saves the most. judge checks cover the outputs a string match can't score
+    (tone, structure, would-a-customer-accept-this) -- configure the judge model
+    in your models file; without one, judge checks fail loudly rather than
+    silently passing."""
     failed = []
     low = text.lower()
     for chk in checks or []:
@@ -82,6 +86,15 @@ def check_output(text: str, checks: list) -> tuple:
             ok = text.strip().lower() == v.strip().lower()
         elif t == "regex":
             ok = re.search(v, text) is not None
+        elif t == "judge":
+            if judge_fn is None:
+                failed.append("judge:no-judge-configured")
+                continue
+            try:
+                ok = bool(judge_fn(text, v))
+            except Exception as e:
+                failed.append(f"judge:error:{str(e)[:40]}")
+                continue
         else:
             ok = v.lower() in low  # unknown type -> lenient contains
         if not ok:
@@ -94,9 +107,11 @@ def _cost(usage: dict, price_in: float, price_out: float) -> float:
             + usage.get("output_tokens", 0) / 1_000_000 * price_out)
 
 
-def run_eval(cases, models, complete_fn, max_tokens) -> list:
+def run_eval(cases, models, complete_fn, max_tokens, judge_fn=None) -> list:
     """complete_fn(provider, model, system, prompt, max_tokens) -> usage dict
-    {text, input_tokens, output_tokens}. Returns per-model result rows."""
+    {text, input_tokens, output_tokens}. judge_fn(output, criteria) -> bool
+    scores any judge-type checks; its calls are not counted in the cost
+    columns. Returns per-model result rows."""
     results = []
     for m in models:
         passed = 0
@@ -111,7 +126,7 @@ def run_eval(cases, models, complete_fn, max_tokens) -> list:
                 usage = complete_fn(m["provider"], m["model"],
                                     c["system"], c["prompt"], max_tokens)
                 dt = time.monotonic() - t0
-                ok, failed = check_output(usage.get("text", ""), c["checks"])
+                ok, failed = check_output(usage.get("text", ""), c["checks"], judge_fn)
                 total_cost += _cost(usage, m["price_in"], m["price_out"])
                 total_tokens += (usage.get("input_tokens", 0)
                                  + usage.get("output_tokens", 0))

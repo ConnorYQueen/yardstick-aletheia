@@ -32,14 +32,17 @@ def _open_stream(client, model, chat, max_tokens):
     """Start a streaming completion, honoring --max-tokens across model
     families: newer models take max_completion_tokens, older ones max_tokens.
     Try the newer name, fall back to the older, then to no cap -- all before
-    any text streams, so no output is duplicated."""
+    any text streams, so no output is duplicated. Only the wrong-parameter
+    rejections trigger a fallback; auth / network / rate-limit errors raise,
+    because retrying with a different token parameter cannot fix them."""
+    from openai import BadRequestError
     base = dict(model=model, messages=chat, stream=True)
     for attempt in ({"max_completion_tokens": max_tokens},
                     {"max_tokens": max_tokens},
                     {}):
         try:
             return client.chat.completions.create(**base, **attempt)
-        except Exception:
+        except (TypeError, BadRequestError):
             continue
     # Last resort: surface the real error from the plain call.
     return client.chat.completions.create(**base)
@@ -62,7 +65,9 @@ def complete_once(client, system, messages, model, max_tokens):
 
     Used by the cost-per-outcome eval harness; reads real token usage off the
     response. Honors --max-tokens across model families (newer take
-    max_completion_tokens, older max_tokens), then falls back to no cap."""
+    max_completion_tokens, older max_tokens), then falls back to no cap.
+    As in _open_stream, only wrong-parameter rejections trigger a fallback."""
+    from openai import BadRequestError
     chat = [{"role": "system", "content": system}] + messages
     base = dict(model=model, messages=chat)
     resp = None
@@ -71,7 +76,7 @@ def complete_once(client, system, messages, model, max_tokens):
         try:
             resp = client.chat.completions.create(**base, **attempt)
             break
-        except Exception:
+        except (TypeError, BadRequestError):
             resp = None
             continue
     if resp is None:
