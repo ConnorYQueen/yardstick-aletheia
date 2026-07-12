@@ -95,6 +95,27 @@ def _http_get_bytes(url, timeout):
     return data
 
 
+def _read_member_capped(zf, member):
+    """Read one zip member, aborting if its ACTUAL decompressed size exceeds the
+    cap. The uncompressed size recorded in the zip header is attacker-controlled,
+    so it is used only as a fast first reject -- never trusted as the real size.
+    The real defense is streaming the member and stopping the moment the bytes we
+    have actually decompressed pass the cap, so a member that lies about its size
+    (a decompression bomb) cannot force an unbounded read into memory."""
+    if zf.getinfo(member).file_size > MAX_DOWNLOAD_BYTES:
+        raise ValueError("member exceeds size cap")
+    out = io.BytesIO()
+    with zf.open(member) as src:
+        while True:
+            chunk = src.read(65536)
+            if not chunk:
+                break
+            out.write(chunk)
+            if out.tell() > MAX_DOWNLOAD_BYTES:
+                raise ValueError("member exceeds size cap")
+    return out.getvalue()
+
+
 def _is_within(base, target):
     """True if target resolves to base itself or a path underneath it. Used to
     refuse any zip-supplied name that would escape the pack directory."""
@@ -192,7 +213,10 @@ def fetch_pack(pack_dir, code, email):
     for fname in PERSONALIZATION_FILES:
         if fname not in names:
             continue
-        content = zf.read(fname)
+        try:
+            content = _read_member_capped(zf, fname)
+        except (OSError, ValueError):
+            continue
         status = _install_file(os.path.join(pack_dir, fname), content)
         if status != "unchanged":
             installed.append(f"{fname} ({status})")
@@ -246,13 +270,6 @@ def self_update(pack_dir):
     names = set(zf.namelist())
     updated, added, unchanged, skipped = [], [], 0, []
 
-    def _read_capped(member):
-        # Guard against a decompression bomb: refuse a member whose declared
-        # uncompressed size alone exceeds the whole-download cap.
-        if zf.getinfo(member).file_size > MAX_DOWNLOAD_BYTES:
-            raise ValueError("member exceeds size cap")
-        return zf.read(member)
-
     def _verified(rel, content):
         # Integrity gate: the member's path must be listed in SHA256SUMS and
         # its bytes must hash to the listed digest. Refuse otherwise.
@@ -272,7 +289,7 @@ def self_update(pack_dir):
             skipped.append(rel)
             continue
         try:
-            content = _read_capped(rel)
+            content = _read_member_capped(zf, rel)
         except (OSError, ValueError):
             skipped.append(rel)
             continue
@@ -311,7 +328,7 @@ def self_update(pack_dir):
         if not _is_within(pack_dir, dest):
             continue
         try:
-            content = _read_capped(rel)
+            content = _read_member_capped(zf, rel)
         except (OSError, ValueError):
             continue
         if not _verified(rel, content):
