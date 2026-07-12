@@ -1,19 +1,34 @@
 """Network sync for Aletheia -- pack fetch on unlock, runner self-update.
 
-Two jobs, both stdlib-only (urllib + zipfile), both conservative about what
-they touch on disk:
+Two jobs, both stdlib-only (urllib + zipfile + hashlib), both conservative
+about what they touch on disk:
 
 - fetch_pack(): asks the Yardstick delivery service for the buyer's
   personalized pack (ALETHEIA.md, audit-data.json, START-HERE.md,
   CHOOSE-YOUR-MODEL.md) and installs those files beside the runner.
   It never installs code -- the runner does not modify itself here.
 
-- self_update(): downloads the public repo's main branch and refreshes the
-  runner code (aletheia.py, _backends/, _artifacts.py, _eval.py, this file,
-  examples). It never touches the buyer's personalization, memory, skills
+- self_update(): downloads a cut GitHub Release of the runner (not the
+  moving main branch) and refreshes the runner code (aletheia.py,
+  _backends/, _artifacts.py, _eval.py, this file, examples). Every file it
+  installs is verified byte-for-byte against the release's SHA256SUMS before
+  it is written. It never touches the buyer's personalization, memory, skills
   they have edited, .env, brand, sessions, or data.
+
+What the SHA256SUMS check does and does not buy: it is an INTEGRITY control.
+It pins the runner to a reviewed, tagged release (not whatever happens to be
+on main this second) and proves the bytes we install match the bytes that
+release published -- so a corrupted download or a file swapped in transit is
+refused. It is NOT cryptographic authenticity: the checksums are fetched from
+the same GitHub origin over the same TLS channel as the zip, so a compromise
+of the repo or the publishing account could ship a matching zip + SHA256SUMS
+pair and this check would pass. Real authenticity needs a signature verified
+against a key we trust, and the stdlib has no signature-verification
+primitive. The runner is deliberately stdlib-only (urllib + zipfile +
+hashlib), so we do not claim more than integrity here.
 """
 
+import hashlib
 import io
 import json
 import os
@@ -23,10 +38,14 @@ import urllib.request
 import zipfile
 
 UNLOCK_ENDPOINT = "https://api.yardstickresearch.app/aletheia/unlock"
-UPDATE_ZIP_URL = "https://github.com/ConnorYQueen/yardstick-aletheia/archive/refs/heads/main.zip"
-UPDATE_ZIP_PREFIX = "yardstick-aletheia-main/"
 
-MAX_DOWNLOAD_BYTES = 30 * 1024 * 1024  # both the pack and the repo zip are far smaller
+# Self-update pulls a cut GitHub Release, not the moving main branch. These are
+# GitHub's stable "latest release" redirects, so they always resolve to the most
+# recent published (non-draft, non-prerelease) release's assets.
+UPDATE_ZIP_URL = "https://github.com/ConnorYQueen/yardstick-aletheia/releases/latest/download/aletheia-runner.zip"
+UPDATE_SUMS_URL = "https://github.com/ConnorYQueen/yardstick-aletheia/releases/latest/download/SHA256SUMS"
+
+MAX_DOWNLOAD_BYTES = 30 * 1024 * 1024  # both the pack and the runner zip are far smaller
 
 # The only files fetch_pack will ever write. Everything else in the pack zip
 # (runner code, requirements, backends) already lives in the buyer's clone.
@@ -82,6 +101,31 @@ def _is_within(base, target):
     base_abs = os.path.abspath(base)
     target_abs = os.path.abspath(target)
     return target_abs == base_abs or target_abs.startswith(base_abs + os.sep)
+
+
+def _parse_sha256sums(text):
+    """Parse a standard sha256sum manifest into {path: hexdigest}.
+
+    Each line is `<64-hex sha256><whitespace><path>`; paths are forward-slash,
+    relative to the zip root, no zip prefix directory. A leading `*` marker
+    (sha256sum's binary-mode flag) on the path is tolerated. Malformed lines and
+    bad-length digests are skipped rather than trusted.
+    """
+    sums = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            continue
+        digest, path = parts[0].lower(), parts[1].strip()
+        if path.startswith("*"):
+            path = path[1:]
+        if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+            continue
+        sums[path] = digest
+    return sums
 
 
 def _install_file(dest_path, content):
@@ -160,17 +204,44 @@ def fetch_pack(pack_dir, code, email):
 
 
 def self_update(pack_dir):
-    """Refresh the runner code from the public repo's main branch.
+    """Refresh the runner code from a cut GitHub Release, integrity-verified.
+
+    Downloads the release's aletheia-runner.zip plus its SHA256SUMS manifest,
+    and installs only the members whose bytes match the manifest. A member
+    whose path is absent from SHA256SUMS, or whose sha256 does not match, is
+    refused (skipped and recorded) -- one bad file never aborts the rest.
+
+    This is INTEGRITY, not authenticity: it proves the installed bytes match
+    what the tagged release published and pins us to a reviewed release, but it
+    cannot detect a repo/account compromise that ships a matching zip +
+    SHA256SUMS pair over the same TLS origin (the stdlib has no signature
+    verification). See the module docstring.
 
     Returns a summary string. Only touches the paths in UPDATE_FILES plus
     add-only skills; buyer personalization, memory, .env, brand, sessions,
     data, and artifacts are never written.
     """
+    # Fetch the checksum manifest first. No manifest -> we cannot verify
+    # anything, so install nothing and fail safe.
+    try:
+        sums_text = _http_get_bytes(UPDATE_SUMS_URL, timeout=60).decode("utf-8", "replace")
+    except Exception:
+        return ("Update failed: could not fetch the release checksums, so nothing"
+                " was changed. Check your connection and run `update` again, or"
+                " email hello@yardstickresearch.app.")
+    sums = _parse_sha256sums(sums_text)
+    if not sums:
+        return ("Update failed: the release checksums were unreadable, so nothing"
+                " was changed. Run `update` again in a minute, or email"
+                " hello@yardstickresearch.app.")
+
     try:
         blob = _http_get_bytes(UPDATE_ZIP_URL, timeout=60)
         zf = zipfile.ZipFile(io.BytesIO(blob))
-    except Exception as err:
-        return f"Update failed: could not download the latest runner ({err})."
+    except Exception:
+        return ("Update failed: could not download the latest runner, so nothing"
+                " was changed. Run `update` again in a minute, or email"
+                " hello@yardstickresearch.app.")
 
     names = set(zf.namelist())
     updated, added, unchanged, skipped = [], [], 0, []
@@ -182,9 +253,18 @@ def self_update(pack_dir):
             raise ValueError("member exceeds size cap")
         return zf.read(member)
 
+    def _verified(rel, content):
+        # Integrity gate: the member's path must be listed in SHA256SUMS and
+        # its bytes must hash to the listed digest. Refuse otherwise.
+        expected = sums.get(rel)
+        if expected is None:
+            return False
+        return hashlib.sha256(content).hexdigest() == expected
+
+    # The release zip has NO top-level prefix directory: members are named by
+    # their repo-relative path directly, matching the SHA256SUMS paths.
     for rel in UPDATE_FILES:
-        member = UPDATE_ZIP_PREFIX + rel
-        if member not in names:
+        if rel not in names:
             continue
         dest = os.path.join(pack_dir, rel.replace("/", os.sep))
         # UPDATE_FILES names are fixed and safe; this is defense in depth.
@@ -192,9 +272,17 @@ def self_update(pack_dir):
             skipped.append(rel)
             continue
         try:
-            status = _install_file(dest, _read_capped(member))
-        except OSError as err:
-            skipped.append(f"{rel} ({err.__class__.__name__})")
+            content = _read_capped(rel)
+        except (OSError, ValueError):
+            skipped.append(rel)
+            continue
+        if not _verified(rel, content):
+            skipped.append(f"{rel} (failed verification)")
+            continue
+        try:
+            status = _install_file(dest, content)
+        except OSError:
+            skipped.append(rel)
             continue
         if status == "updated":
             updated.append(rel)
@@ -206,11 +294,12 @@ def self_update(pack_dir):
     # Skills are add-only: new template skills install, but a skill directory
     # that already exists is the buyer's (Aletheia edits them over time) and
     # is never overwritten. Names here come straight from the zip, so every
-    # destination is checked for path escape before any write.
+    # destination is checked for path escape AND against SHA256SUMS before any
+    # write.
     for member in sorted(names):
-        if not member.startswith(UPDATE_ZIP_PREFIX + "skills/") or member.endswith("/"):
+        if not member.startswith("skills/") or member.endswith("/"):
             continue
-        rel = member[len(UPDATE_ZIP_PREFIX):]
+        rel = member
         if ".." in rel.split("/"):
             continue
         skill_dir = rel.split("/")[1] if len(rel.split("/")) > 2 else None
@@ -222,9 +311,16 @@ def self_update(pack_dir):
         if not _is_within(pack_dir, dest):
             continue
         try:
-            _install_file(dest, _read_capped(member))
-            added.append(rel)
+            content = _read_capped(rel)
         except (OSError, ValueError):
+            continue
+        if not _verified(rel, content):
+            skipped.append(f"{rel} (failed verification)")
+            continue
+        try:
+            _install_file(dest, content)
+            added.append(rel)
+        except OSError:
             continue
 
     parts = []
@@ -241,5 +337,5 @@ def self_update(pack_dir):
             " edited, .env, and personalized files were not touched."
     if skipped:
         summary += " Skipped files were left as they were; run `update` again or" \
-            " check file permissions."
+            " email hello@yardstickresearch.app if it keeps happening."
     return summary
