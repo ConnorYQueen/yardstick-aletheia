@@ -499,8 +499,14 @@ def cmd_setup(pack_dir: Path) -> int:
 # their PDF / PowerPoint and nothing more.
 
 def code_is_valid(code: str) -> bool:
-    code = (code or "").strip()
-    return len(code) == 8 and code[:2].upper() == "AI"
+    # Soft local pre-check only; the server is the real authority. Accept the
+    # legacy short code and the current opaque token alike, so a buyer's code
+    # is never rejected here before it can be verified. Kept permissive on
+    # purpose -- never narrow this to a single exact shape.
+    code = (code or "").strip().upper()
+    if len(code) == 8 and code[:2] == "AI":
+        return True
+    return code.isalnum() and 16 <= len(code) <= 64
 
 
 def is_unlocked(pack_dir: Path) -> bool:
