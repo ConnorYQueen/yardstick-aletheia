@@ -4,6 +4,8 @@
 __pycache__/
 *.pyc
 .aletheia-unlocked
-.aletheia-unlocked
 brand.json
 artifacts/
+sessions/
+data/
+*.bak

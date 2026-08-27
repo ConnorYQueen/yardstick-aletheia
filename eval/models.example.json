@@ -1,6 +1,7 @@
 {
-  "note": "Set price_per_million_input/output from your provider's CURRENT pricing - prices change often, so verify before trusting the cost column. Add or remove rows to compare only the models you can actually run on your key. Leave a price at 0 to compare on pass rate and tokens alone; set both to rank by cost per outcome.",
+  "note": "Set price_per_million_input/output from your provider's CURRENT pricing - prices change often, so verify before trusting the cost column. Add or remove rows to compare only the models you can actually run on your key. Leave a price at 0 to compare on pass rate and tokens alone; set both to rank by cost per outcome. The judge block is only needed if your cases use judge-type checks; it names the model that scores those checks (judge calls are not counted in the cost columns).",
   "target_pass_rate": 0.9,
+  "judge": {"provider": "anthropic", "model": "claude-opus-4-8"},
   "models": [
     {"name": "frontier", "provider": "anthropic", "model": "claude-opus-4-8", "price_per_million_input": 0, "price_per_million_output": 0},
     {"name": "mid", "provider": "anthropic", "model": "claude-sonnet-4-6", "price_per_million_input": 0, "price_per_million_output": 0},

@@ -6,7 +6,7 @@ path is shortest for your environment. You do not need a Claude account.
 
 ## Our recommendation for you
 
-Based on your declared stack (no declared stack in your audit yet (run `unlock` first)):
+Based on your declared stack (your personalized copy fills this in after `unlock`):
 
 - **Provider: Anthropic (Claude)**
 - **Model: claude-opus-4-8**

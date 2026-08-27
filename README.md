@@ -18,16 +18,21 @@ memory across sessions and builds reusable skills you own.
 |---|---|
 | `aletheia.py` | The runner: the agent itself. |
 | `_backends/` | One file per model provider (Anthropic, OpenAI). |
+| `_artifacts.py` | Builds decks, PDFs, financial models, and the autonomy dashboard. |
 | `_eval.py`, `eval/` | The cost-per-outcome eval harness + example cases/models. |
+| `_sync.py` | Fetches your personalized files on unlock; powers `update`. |
 | `CHOOSE-YOUR-MODEL.md` | Which model to run her on, given your stack. |
 | `requirements.txt` | Python dependencies. |
 | `.env.example` | Template for your API key. |
 | `ALETHEIA.md` | The agent's instructions, personalized to your audit. * |
 | `audit-data.json` | Your audit results. * |
 | `memory/`, `skills/` | Created as you go: her notes + the skills she builds you. |
+| `sessions/` | Local transcripts of your sessions (JSONL, never leaves your machine). |
+| `data/` | Drop your own CSV / JSON / text exports here; she reads them as measured inputs. |
 
-\* The two starred files come from your Yardstick bundle. `unlock` fetches
-`audit-data.json` for you, or drop your own beside `aletheia.py`.
+\* The two starred files come from your Yardstick bundle. `unlock` with your
+code and purchase email fetches them (plus your personalized START-HERE and
+model guide) for you, or drop your own beside `aletheia.py`.
 
 ## Run it
 
@@ -41,11 +46,24 @@ python aletheia.py setup             # pick the best model for your stack, write
 python aletheia.py                   # start (or resume) a session
 ```
 
+`unlock` also asks for the email you purchased with and fetches your
+personalized files from Yardstick; if that fetch cannot complete you can keep
+working and run `python aletheia.py unlock CODE --email you@company.com` later.
+`python aletheia.py update` refreshes the runner code from this repository -
+it never touches your personalization, memory, edited skills, `.env`, sessions,
+or data, and backs up anything it replaces as `.bak`.
+`python aletheia.py status` prints your automation-project portfolio from the
+ledger Aletheia keeps (one file per project under `memory/projects/`); see
+`ORCHESTRATION.md` for how the harness fits together and what is coming next.
+
 `python aletheia.py --check` verifies setup without an API call. Type your
 questions; Aletheia answers from your audit data, saves memory, and builds
 skills as you go (you'll see `[saved memory: ...]` / `[created skill: ...]`).
-Type `exit` or press Ctrl-D to quit; next time, `python aletheia.py` resumes
-from your saved memory.
+Each session is transcribed to `sessions/` locally, and long sessions trim
+their oldest exchanges to stay inside the model's context window (her memory
+files carry the durable state). Type `exit` to quit - she offers to save a
+session summary to memory first - and next time `python aletheia.py` resumes
+from what she saved.
 
 ## Choosing a model
 
@@ -70,8 +88,10 @@ python aletheia.py eval --cases eval/cases.example.json
 ```
 
 It runs every model in `eval/models.example.json` over your cases, scores the
-outputs with deterministic checks, and reports each model's pass rate and cost
-per outcome, then names the cheapest model that clears your target. Copy the two
+outputs with deterministic checks (plus optional `judge` checks, where a model
+you name in the models file scores criteria a string match cannot - tone,
+structure, would-a-customer-accept-this), and reports each model's pass rate
+and cost per outcome, then names the cheapest model that clears your target. Copy the two
 example files and edit them for your task (or ask Aletheia to write a cases set -
 she emits one and tells you the command to run). Set each model's current price
 in the models file to rank by cost. It calls only the providers you list, on
@@ -85,11 +105,14 @@ reusable processes she builds so you own the capability internally instead of
 renting it from a vendor. Both are yours - portable, readable, and usable on
 any agent platform.
 
-## Deliverables (decks, PDFs, financial models)
+## Deliverables (decks, PDFs, financial models, dashboard)
 
 Ask Aletheia to build a stakeholder deck, a PDF (for example a retraining plan
-for affected employees), or a financial projection, and she writes the file to
-`artifacts/` in your branding. Install the optional builders first:
+for affected employees), a financial projection, or your autonomy dashboard - a
+standing scorecard of stage, savings, and each workflow's rung and next gate,
+written as a single self-contained HTML file she regenerates as the numbers
+move. Everything lands in `artifacts/` in your branding. The dashboard needs no
+extra libraries; for the others, install the optional builders first:
 
 ```bash
 pip install python-pptx fpdf2 openpyxl
@@ -105,8 +128,10 @@ network call, so it is safe for regulated and locked-down environments.
 ## Your data
 
 `audit-data.json` holds your audit responses and the numbers derived from them.
-This program sends them only to the model provider you select, and stores
-nothing beyond the terminal session. The folder is yours; share it inside your
+Files you drop in `data/` (CSV, JSON, text) are summarized into her context as
+measured inputs, so her recommendations run on your real numbers. This program
+sends both only to the model provider you select, and stores nothing beyond
+your own machine. The folder is yours; share it inside your
 organization as you see fit.
 
 Questions about your report, a re-audit, or anything in your bundle:
